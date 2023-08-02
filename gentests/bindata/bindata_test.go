@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"aqwari.net/xml/xmltree"
+	"github.com/getliquid/go-xml/xmltree"
 )
 
 func TestBindata(t *testing.T) {

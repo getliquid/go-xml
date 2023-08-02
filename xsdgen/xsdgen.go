@@ -1,4 +1,4 @@
-package xsdgen // import "aqwari.net/xml/xsdgen"
+package xsdgen // import "github.com/getliquid/go-xml/xsdgen"
 
 import (
 	"bytes"
@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"aqwari.net/xml/internal/dependency"
-	"aqwari.net/xml/internal/gen"
-	"aqwari.net/xml/xmltree"
-	"aqwari.net/xml/xsd"
+	"github.com/getliquid/go-xml/internal/dependency"
+	"github.com/getliquid/go-xml/internal/gen"
+	"github.com/getliquid/go-xml/xmltree"
+	"github.com/getliquid/go-xml/xsd"
 )
 
 type orderedStringMap interface {
@@ -359,11 +359,11 @@ func (cfg *Config) expandComplexTypes(types []xsd.Type) []xsd.Type {
 // type that the user wants included in the Go source. In affect, what we
 // want to do is take the linked list:
 //
-// 	t1 -> t2 -> t3 -> builtin
+//	t1 -> t2 -> t3 -> builtin
 //
 // And produce a set of tuples:
 //
-// 	t1 -> builtin, t2 -> builtin, t3 -> builtin
+//	t1 -> builtin, t2 -> builtin, t3 -> builtin
 //
 // This is a heuristic that tends to generate better-looking Go code.
 func (cfg *Config) flatten(types map[xml.Name]xsd.Type) []xsd.Type {
@@ -597,6 +597,9 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 
 	namegen := nameGenerator{cfg, make(map[string]struct{})}
 
+	tag := fmt.Sprintf("%s %s", t.Name.Space, t.Name.Local)
+	fields = append(fields, ast.NewIdent("XMLName"), ast.NewIdent("xml.Name"), gen.String(tag))
+
 	if t.Mixed {
 		// For complex types with mixed content models, we must drill
 		// down to the base simple or builtin type to determine the
@@ -733,7 +736,8 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 		}
 		qualified := false
 		for _, attrAttr := range attr.Attr {
-			if attrAttr.Name.Space == "" && attrAttr.Name.Local == "form" && attrAttr.Value == "qualified" {
+			if attrAttr.Name.Space == "" && attrAttr.Name.Local == "form" &&
+				attrAttr.Value == "qualified" {
 				qualified = true
 			}
 		}
@@ -755,7 +759,11 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 			if nonTrivialBuiltin(attr.Type) {
 				h, ok := cfg.helperTypes[xsd.XMLName(attr.Type)]
 				if !ok {
-					return nil, fmt.Errorf("no helper type for type %v attribute %v", t.Name, attr.Name)
+					return nil, fmt.Errorf(
+						"no helper type for type %v attribute %v",
+						t.Name,
+						attr.Name,
+					)
 				}
 				typeName = h.name
 				helperTypes = append(helperTypes, xsd.XMLName(attr.Type))
@@ -778,24 +786,27 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 		xsdType:     t,
 		helperTypes: helperTypes,
 	}
+
 	if len(overrides) > 0 {
 		unmarshal, marshal, err := cfg.genComplexTypeMethods(t, overrides)
 		if err != nil {
 			return result, err
-		} else {
-			if unmarshal != nil {
-				s.methods = append(s.methods, unmarshal)
-			}
-			if marshal != nil {
-				s.methods = append(s.methods, marshal)
-			}
+		}
+		if unmarshal != nil {
+			s.methods = append(s.methods, unmarshal)
+		}
+		if marshal != nil {
+			s.methods = append(s.methods, marshal)
 		}
 	}
 	result = append(result, s)
 	return result, nil
 }
 
-func (cfg *Config) genComplexTypeMethods(t *xsd.ComplexType, overrides []fieldOverride) (marshal, unmarshal *ast.FuncDecl, err error) {
+func (cfg *Config) genComplexTypeMethods(
+	t *xsd.ComplexType,
+	overrides []fieldOverride,
+) (marshal, unmarshal *ast.FuncDecl, err error) {
 	var data struct {
 		Overrides []fieldOverride
 		Type      string
@@ -960,7 +971,23 @@ func (cfg *Config) genSimpleListSpec(t *xsd.SimpleType) ([]spec, error) {
 	}
 
 	switch base.(xsd.Builtin) {
-	case xsd.ID, xsd.NCName, xsd.NMTOKEN, xsd.Name, xsd.QName, xsd.ENTITY, xsd.AnyURI, xsd.Language, xsd.String, xsd.Token, xsd.XMLLang, xsd.XMLSpace, xsd.XMLBase, xsd.XMLId, xsd.Duration, xsd.NormalizedString, xsd.AnySimpleType:
+	case xsd.ID,
+		xsd.NCName,
+		xsd.NMTOKEN,
+		xsd.Name,
+		xsd.QName,
+		xsd.ENTITY,
+		xsd.AnyURI,
+		xsd.Language,
+		xsd.String,
+		xsd.Token,
+		xsd.XMLLang,
+		xsd.XMLSpace,
+		xsd.XMLBase,
+		xsd.XMLId,
+		xsd.Duration,
+		xsd.NormalizedString,
+		xsd.AnySimpleType:
 		marshalFn = marshalFn.Body(`
 			result := make([][]byte, 0, len(*x))
 			for _, v := range *x {
@@ -974,7 +1001,14 @@ func (cfg *Config) genSimpleListSpec(t *xsd.SimpleType) ([]spec, error) {
 			}
 			return nil
 		`)
-	case xsd.Date, xsd.DateTime, xsd.GDay, xsd.GMonth, xsd.GMonthDay, xsd.GYear, xsd.GYearMonth, xsd.Time:
+	case xsd.Date,
+		xsd.DateTime,
+		xsd.GDay,
+		xsd.GMonth,
+		xsd.GMonthDay,
+		xsd.GYear,
+		xsd.GYearMonth,
+		xsd.Time:
 		marshalFn = marshalFn.Body(`
 			result := make([][]byte, 0, len(*x))
 			for _, v := range *x {
@@ -1032,7 +1066,12 @@ func (cfg *Config) genSimpleListSpec(t *xsd.SimpleType) ([]spec, error) {
 			}
 			return nil
 		`)
-	case xsd.Int, xsd.Integer, xsd.NegativeInteger, xsd.NonNegativeInteger, xsd.NonPositiveInteger, xsd.Short:
+	case xsd.Int,
+		xsd.Integer,
+		xsd.NegativeInteger,
+		xsd.NonNegativeInteger,
+		xsd.NonPositiveInteger,
+		xsd.Short:
 		marshalFn = marshalFn.Body(`
 			result := make([][]byte, 0, len(*x))
 			for _, v := range *x {

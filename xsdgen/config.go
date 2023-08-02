@@ -9,17 +9,17 @@ import (
 	"regexp"
 	"strings"
 
-	"aqwari.net/xml/internal/gen"
-	"aqwari.net/xml/xsd"
+	"github.com/getliquid/go-xml/internal/gen"
+	"github.com/getliquid/go-xml/xsd"
 )
 
 // A Config holds user-defined overrides and filters that are used when
 // generating Go source code from an xsd document.
 type Config struct {
-	logger          Logger
-	loglevel        int
-	namespaces      []string
-	pkgname         string
+	logger     Logger
+	loglevel   int
+	namespaces []string
+	pkgname    string
 	// load xsd imports recursively into memory before parsing
 	followImports   bool
 	preprocessType  typeTransform
@@ -383,19 +383,19 @@ func HandleSOAPArrayType() Option {
 
 // SOAP 1.1 defines an Array as
 //
-// 	<xs:complexType name="Array">
-// 	  <xs:any maxOccurs="unbounded" />
-// 	  <xs:attribute name="arrayType" type="xs:string" />
-// 	  <!-- common attributes ellided -->
-// 	</xs:complexType>
+//	<xs:complexType name="Array">
+//	  <xs:any maxOccurs="unbounded" />
+//	  <xs:attribute name="arrayType" type="xs:string" />
+//	  <!-- common attributes ellided -->
+//	</xs:complexType>
 //
 // Following the normal procedure of the xsdgen package, this
 // would map to the following Go source (with arrayType as 'int'):
 //
-// 	type Array struct {
-// 		Item      []int  `xml:",any"`
-// 		ArrayType string `xml:"http://schemas.xmlsoap.org/soap/encoding/ arrayType"`
-// 	}
+//	type Array struct {
+//		Item      []int  `xml:",any"`
+//		ArrayType string `xml:"http://schemas.xmlsoap.org/soap/encoding/ arrayType"`
+//	}
 //
 // While the encoding/xml package can easily marshal and unmarshal to
 // and from such a Go type, it is not ideal to use. When using the
@@ -481,24 +481,23 @@ func (cfg *Config) public(name xml.Name) string {
 
 // SOAP arrays are declared as follows (unimportant fields ellided):
 //
-// 	<xs:complexType name="Array">
-// 	  <xs:attribute name="arrayType" type="xs:string" />
-// 	  <xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" />
-// 	</xs:complexType>
+//	<xs:complexType name="Array">
+//	  <xs:attribute name="arrayType" type="xs:string" />
+//	  <xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" />
+//	</xs:complexType>
 //
 // Then schemas that want to declare a fixed-type soap array do so like this:
 //
-// 	<xs:complexType name="IntArray">
-// 	  <xs:complexContent>
-// 	    <xs:restriction base="soapenc:Array>
-// 	      <xs:attribute ref="soapenc:arrayType" wsdl:arrayType="xs:int[]" />
-// 	    </xs:restriction>
-// 	  </xs:complexContent>
-// 	</xs:complexType>
+//	<xs:complexType name="IntArray">
+//	  <xs:complexContent>
+//	    <xs:restriction base="soapenc:Array>
+//	      <xs:attribute ref="soapenc:arrayType" wsdl:arrayType="xs:int[]" />
+//	    </xs:restriction>
+//	  </xs:complexContent>
+//	</xs:complexType>
 //
 // XML Schema is wonderful, aint it?
 func (cfg *Config) parseSOAPArrayType(s xsd.Schema, t xsd.Type) xsd.Type {
-	const soapenc = "http://schemas.xmlsoap.org/soap/encoding/"
 	const wsdl = "http://schemas.xmlsoap.org/wsdl/"
 	var itemType xml.Name
 
@@ -513,7 +512,7 @@ func (cfg *Config) parseSOAPArrayType(s xsd.Schema, t xsd.Type) xsd.Type {
 			continue
 		}
 		for _, a := range v.Attr {
-			if (a.Name != xml.Name{wsdl, "arrayType"}) {
+			if (a.Name != xml.Name{Space: wsdl, Local: "arrayType"}) {
 				continue
 			}
 			itemType = v.Resolve(a.Value)
@@ -573,7 +572,10 @@ Loop:
 		}
 	}
 	if !found {
-		cfg.logf("could not override wildcard type for %s; not found in type hierarchy", t.Name.Local)
+		cfg.logf(
+			"could not override wildcard type for %s; not found in type hierarchy",
+			t.Name.Local,
+		)
 		return t
 	}
 	cfg.debugf("overriding wildcard element of %s type from %s to %s",
@@ -751,12 +753,12 @@ func (cfg *Config) soapArrayToSlice(s spec) spec {
 	var baseType xml.Name
 	// the parseSOAPArray pre-processor would have replaced the wildcard
 	// element in the array with the appropriate type.
-	complex, ok := s.xsdType.(*xsd.ComplexType)
+	complexType, ok := s.xsdType.(*xsd.ComplexType)
 	if !ok {
 		return s
 	}
 
-	for _, el := range complex.Elements {
+	for _, el := range complexType.Elements {
 		if el.Wildcard {
 			baseType = xsd.XMLName(el.Type)
 			break
@@ -768,7 +770,7 @@ func (cfg *Config) soapArrayToSlice(s spec) spec {
 	}
 	cfg.debugf("flattening single-element slice struct type %s to []%v", s.name, slice.Elt)
 	tag := gen.TagKey(str.Fields.List[0], "xml")
-	xmltag := xml.Name{"", ",any"}
+	xmltag := xml.Name{Space: "", Local: ",any"}
 
 	if tag != "" {
 		parts := strings.Split(tag, ",")
@@ -843,15 +845,9 @@ func (cfg *Config) soapArrayToSlice(s spec) spec {
 		Returns("error").
 		Body(`
 			var output struct {
-				ArrayType string `+"`xml:\"http://schemas.xmlsoap.org/wsdl/ arrayType,attr\"`"+`
-				Items []%[1]s `+"`xml:\"%[2]s %[3]s\"`"+`
+				Items []%[1]s `+"`xml:\"%[1]s\"`"+`
 			}
 			output.Items = []%[1]s(a)
-			start.Attr = append(start.Attr, xml.Attr {
-				Name: xml.Name{"", "xmlns:ns1"},
-				Value: %[4]q,
-			})
-			output.ArrayType = "ns1:%[5]s[]"
 			return e.EncodeElement(&output, start)
 		`, itemType, xmltag.Space, xmltag.Local, baseType.Space, baseType.Local).Decl()
 	if err != nil {
