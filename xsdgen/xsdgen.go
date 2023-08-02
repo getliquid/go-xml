@@ -161,7 +161,7 @@ func (cfg *Config) gen(primaries, deps []xsd.Schema) (*Code, error) {
 			primary.Types = all
 
 			for name, t := range prev {
-				if t := cfg.preprocessType(primary, t); t != nil {
+				if t = cfg.preprocessType(primary, t); t != nil {
 					prev[name] = t
 				}
 			}
@@ -210,6 +210,7 @@ func (cfg *Config) gen(primaries, deps []xsd.Schema) (*Code, error) {
 			}
 		}
 	}
+
 	rangeMap(code.decls, func(t string) {
 		s := code.decls[t]
 		for _, dep := range s.helperFuncs {
@@ -221,6 +222,49 @@ func (cfg *Config) gen(primaries, deps []xsd.Schema) (*Code, error) {
 			}
 		}
 	})
+
+	// 1. BUILD local dependency graph (map of structs that are used by other struct)
+	// 2. ADD XMLName to any struct that is _NOT_ used (i.e. the toplevel structs)
+	// for d, spec := range code.decls {
+	// 	cfg.debugf("canonicalizing XMLName for %s", d)
+	//     str, isStruct := spec.expr.(*ast.StructType)
+	//     if !isStruct {
+	//         continue
+	//     }
+	//
+	//
+	// }
+
+	for _, spec := range code.decls {
+		s, isStruct := spec.expr.(*ast.StructType)
+		if !isStruct {
+			continue
+		}
+
+		for _, field := range s.Fields.List {
+			dep, known := code.decls[field.Names[0].String()]
+			if !known {
+				continue
+			}
+
+			depStruct, isStruct := dep.expr.(*ast.StructType)
+			if !isStruct {
+				continue
+			}
+
+			fields := []*ast.Field{}
+			for _, f := range depStruct.Fields.List {
+				if f.Names[0].String() == "XMLName" {
+					continue
+				}
+
+				fields = append(fields, f)
+			}
+
+			depStruct.Fields.List = fields
+		}
+	}
+
 	return code, nil
 }
 
@@ -297,7 +341,7 @@ func (cfg *Config) expandComplexTypes(types []xsd.Type) []xsd.Type {
 		if b, ok := c.Base.(*xsd.ComplexType); ok {
 			if _, ok := index[b.Name]; !ok {
 				// should never happen
-				panic(fmt.Errorf("missing base type for %v.", c.Name))
+				panic(fmt.Errorf("missing base type for %v", c.Name))
 			}
 			graph.Add(i, index[b.Name])
 		}
