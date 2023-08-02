@@ -777,6 +777,7 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 	}
 
 	if len(fields) == 1 {
+        cfg.debugf("Only one field", t.Name.Local)
 		// If the struct has 1 field that is _not_ an array, add the xml.Name field.
 		if _, isArray := fields[0].(*ast.ArrayType); !isArray {
             cfg.debugf("Adding XMLName field: %s", t.Name.Local)
