@@ -776,9 +776,11 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 		}
 	}
 
-	addXMLName := false
+	addXMLName := true
 	if len(fields) == 1 {
-		_, addXMLName = fields[0].(*ast.ArrayType)
+		if _, isArray := fields[0].(*ast.ArrayType); isArray {
+			addXMLName = false
+		}
 	}
 
 	if addXMLName {
