@@ -597,9 +597,6 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 
 	namegen := nameGenerator{cfg, make(map[string]struct{})}
 
-	tag := fmt.Sprintf("%s %s", t.Name.Space, t.Name.Local)
-	fields = append(fields, ast.NewIdent("XMLName"), ast.NewIdent("xml.Name"), gen.String(tag))
-
 	if t.Mixed {
 		// For complex types with mixed content models, we must drill
 		// down to the base simple or builtin type to determine the
@@ -778,6 +775,20 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 			})
 		}
 	}
+
+	if len(fields) == 1 {
+	    // If the struct has 1 field that is _not_ an array, add the xml.Name field.
+		if _, ok := fields[0].(*ast.ArrayType); !ok {
+			tag := fmt.Sprintf("%s %s", t.Name.Space, t.Name.Local)
+			fields = append(
+				fields,
+				ast.NewIdent("XMLName"),
+				ast.NewIdent("xml.Name"),
+				gen.String(tag),
+			)
+		}
+	}
+
 	expr := gen.Struct(fields...)
 	s := spec{
 		doc:         t.Doc,

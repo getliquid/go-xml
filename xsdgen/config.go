@@ -299,7 +299,7 @@ func replaceAllNamesRegex(reg *regexp.Regexp, repl string) Option {
 	}
 }
 
-// The UseFieldNames Option names anonymous types based on the name
+// UseFieldNames Option names anonymous types based on the name
 // of the element or attribute they describe.
 func UseFieldNames() Option {
 	return ProcessTypes(useFieldNames)
@@ -366,7 +366,7 @@ func ProcessTypes(fn func(xsd.Schema, xsd.Type) xsd.Type) Option {
 	}
 }
 
-// The Option HandleSOAPArrayType adds a special-case pre-processing step to
+// HandleSOAPArrayType adds a special-case pre-processing step to
 // xsdgen that parses the wsdl:arrayType attribute of a SOAP array declaration
 // and changes the underlying base type to match.
 func HandleSOAPArrayType() Option {
