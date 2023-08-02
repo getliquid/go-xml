@@ -776,25 +776,22 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 		}
 	}
 
+	expr := gen.Struct(fields...)
+
 	addXMLName := true
-	if len(fields) == 1 {
-		if _, isArray := fields[0].(*ast.ArrayType); isArray {
-			addXMLName = false
-		}
+	if len(expr.Fields.List) == 1 {
+		_, isArray := expr.Fields.List[0].Type.(*ast.ArrayType)
+		addXMLName = !isArray
 	}
 
 	if addXMLName {
-		cfg.debugf("Adding XMLName field: %s", t.Name.Local)
-		tag := fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, t.Name.Local)
-		fields = append(
-			fields,
-			ast.NewIdent("XMLName"),
-			ast.NewIdent("xml.Name"),
-			gen.String(tag),
-		)
+		expr.Fields.List = append(expr.Fields.List, &ast.Field{
+			Names: []*ast.Ident{ast.NewIdent("XMLName")},
+			Type:  ast.NewIdent("xml.Name"),
+			Tag:   gen.String(fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, t.Name.Local)),
+		})
 	}
 
-	expr := gen.Struct(fields...)
 	s := spec{
 		doc:         t.Doc,
 		name:        cfg.public(t.Name),
