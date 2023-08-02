@@ -776,19 +776,20 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 		}
 	}
 
+	addXMLName := false
 	if len(fields) == 1 {
-        cfg.debugf("Only one field", t.Name.Local)
-		// If the struct has 1 field that is _not_ an array, add the xml.Name field.
-		if _, isArray := fields[0].(*ast.ArrayType); !isArray {
-            cfg.debugf("Adding XMLName field: %s", t.Name.Local)
-			tag := fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, t.Name.Local)
-			fields = append(
-				fields,
-				ast.NewIdent("XMLName"),
-				ast.NewIdent("xml.Name"),
-				gen.String(tag),
-			)
-		}
+		_, addXMLName = fields[0].(*ast.ArrayType)
+	}
+
+	if addXMLName {
+		cfg.debugf("Adding XMLName field: %s", t.Name.Local)
+		tag := fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, t.Name.Local)
+		fields = append(
+			fields,
+			ast.NewIdent("XMLName"),
+			ast.NewIdent("xml.Name"),
+			gen.String(tag),
+		)
 	}
 
 	expr := gen.Struct(fields...)
