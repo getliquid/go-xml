@@ -478,7 +478,7 @@ func (cfg *Config) public(name xml.Name) string {
 	if cfg.nameTransform != nil {
 		name = cfg.nameTransform(name)
 	}
-	return strcase.ToGoCamel(name.Local)
+	return strcase.ToGoPascal(name.Local)
 }
 
 //

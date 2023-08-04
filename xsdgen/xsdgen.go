@@ -822,7 +822,7 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 		expr.Fields.List = append(expr.Fields.List, &ast.Field{
 			Names: []*ast.Ident{ast.NewIdent("XMLName")},
 			Type:  ast.NewIdent("xml.Name"),
-			Tag:   gen.String(fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, t.Name.Space)),
+			Tag:   gen.String(fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, t.Name.Local)),
 		})
 	}
 

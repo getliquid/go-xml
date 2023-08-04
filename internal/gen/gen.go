@@ -23,12 +23,11 @@ import (
 	"text/template"
 
 	"github.com/ettle/strcase"
-	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
 )
 
 var genFuncMap = template.FuncMap{
-	"title":    strcase.ToGoCamel,
+	"title":    strcase.ToGoPascal,
 	"split":    strings.Split,
 	"join":     strings.Join,
 	"sanitize": Sanitize,
@@ -129,7 +128,7 @@ func String(s string) *ast.BasicLit {
 
 // Public turns a string into a public (uppercase) identifier.
 func Public(name string) *ast.Ident {
-	return ast.NewIdent(strcase.ToGoCamel(name))
+	return ast.NewIdent(strcase.ToGoPascal(name))
 }
 
 func constDecl(kind token.Token, args ...string) *ast.GenDecl {

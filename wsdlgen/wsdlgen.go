@@ -306,7 +306,7 @@ func (p *printer) opArgs(
 		}
 		args.input = append(args.input, vname+" "+inputType)
 		args.InputFields = append(args.InputFields, field{
-			Name:       strcase.ToGoCamel(part.Name),
+			Name:       strcase.ToGoPascal(part.Name),
 			Type:       typ,
 			PublicType: exposeType(typ),
 			XMLName:    xml.Name{Space: p.wsdl.TargetNS, Local: part.Name},
@@ -314,10 +314,10 @@ func (p *printer) opArgs(
 		})
 	}
 	if len(args.input) > p.maxArgs {
-		args.InputType = strcase.ToGoCamel(args.InputName.Local)
+		args.InputType = strcase.ToGoPascal(args.InputName.Local)
 		args.input = []string{"v " + args.InputName.Local}
 		for i, v := range input.Parts {
-			args.InputFields[i].InputArg = "v." + strcase.ToGoCamel(v.Name)
+			args.InputFields[i].InputArg = "v." + strcase.ToGoPascal(v.Name)
 		}
 	}
 	args.OutputName = output.Name
@@ -329,13 +329,13 @@ func (p *printer) opArgs(
 		outputType := exposeType(typ)
 		args.output = append(args.output, outputType)
 		args.OutputFields = append(args.OutputFields, field{
-			Name:    strcase.ToGoCamel(part.Name),
+			Name:    strcase.ToGoPascal(part.Name),
 			Type:    typ,
 			XMLName: xml.Name{Space: p.wsdl.TargetNS, Local: part.Name},
 		})
 	}
 	if len(args.output) > p.maxReturns {
-		args.ReturnType = strcase.ToGoCamel(args.OutputName.Local)
+		args.ReturnType = strcase.ToGoPascal(args.OutputName.Local)
 		args.ReturnFields = make([]field, len(args.OutputFields))
 		for i, v := range args.OutputFields {
 			args.ReturnFields[i] = field{
