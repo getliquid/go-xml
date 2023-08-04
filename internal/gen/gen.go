@@ -22,13 +22,13 @@ import (
 	"strings"
 	"text/template"
 
-	"golang.org/x/text/cases"
+	"github.com/ettle/strcase"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
 )
 
 var genFuncMap = template.FuncMap{
-	"title":    cases.Caser.String,
+	"title":    strcase.ToGoCamel,
 	"split":    strings.Split,
 	"join":     strings.Join,
 	"sanitize": Sanitize,
@@ -129,8 +129,7 @@ func String(s string) *ast.BasicLit {
 
 // Public turns a string into a public (uppercase) identifier.
 func Public(name string) *ast.Ident {
-	caser := cases.Title(language.English)
-	return ast.NewIdent(caser.String(name))
+	return ast.NewIdent(strcase.ToGoCamel(name))
 }
 
 func constDecl(kind token.Token, args ...string) *ast.GenDecl {

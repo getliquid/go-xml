@@ -9,10 +9,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ettle/strcase"
 	"github.com/getliquid/go-xml/internal/gen"
 	"github.com/getliquid/go-xml/xsd"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // A Config holds user-defined overrides and filters that are used when
@@ -479,8 +478,7 @@ func (cfg *Config) public(name xml.Name) string {
 	if cfg.nameTransform != nil {
 		name = cfg.nameTransform(name)
 	}
-	caser := cases.Title(language.AmericanEnglish)
-	return caser.String(name.Local)
+	return strcase.ToGoCamel(name.Local)
 }
 
 //

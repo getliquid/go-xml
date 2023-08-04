@@ -16,12 +16,11 @@ import (
 	"go/ast"
 	"os"
 
+	"github.com/ettle/strcase"
 	"github.com/getliquid/go-xml/internal/gen"
 	"github.com/getliquid/go-xml/wsdl"
 	"github.com/getliquid/go-xml/xsd"
 	"github.com/getliquid/go-xml/xsdgen"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // A Logger interface for generic logging.
@@ -295,7 +294,6 @@ func (p *printer) opArgs(
 	args.MsgName = op.Name
 	args.InputName = input.Name
 
-    caser := cases.Title(language.English)
 	for _, part := range input.Parts {
 		typ, err := p.getPartType(part)
 		if err != nil {
@@ -308,7 +306,7 @@ func (p *printer) opArgs(
 		}
 		args.input = append(args.input, vname+" "+inputType)
 		args.InputFields = append(args.InputFields, field{
-			Name:       caser.String(part.Name),
+			Name:       strcase.ToGoCamel(part.Name),
 			Type:       typ,
 			PublicType: exposeType(typ),
 			XMLName:    xml.Name{Space: p.wsdl.TargetNS, Local: part.Name},
@@ -316,10 +314,10 @@ func (p *printer) opArgs(
 		})
 	}
 	if len(args.input) > p.maxArgs {
-		args.InputType = caser.String(args.InputName.Local)
+		args.InputType = strcase.ToGoCamel(args.InputName.Local)
 		args.input = []string{"v " + args.InputName.Local}
 		for i, v := range input.Parts {
-			args.InputFields[i].InputArg = "v." + caser.String(v.Name)
+			args.InputFields[i].InputArg = "v." + strcase.ToGoCamel(v.Name)
 		}
 	}
 	args.OutputName = output.Name
@@ -331,13 +329,13 @@ func (p *printer) opArgs(
 		outputType := exposeType(typ)
 		args.output = append(args.output, outputType)
 		args.OutputFields = append(args.OutputFields, field{
-			Name:    caser.String(part.Name),
+			Name:    strcase.ToGoCamel(part.Name),
 			Type:    typ,
 			XMLName: xml.Name{Space: p.wsdl.TargetNS, Local: part.Name},
 		})
 	}
 	if len(args.output) > p.maxReturns {
-		args.ReturnType = caser.String(args.OutputName.Local)
+		args.ReturnType = strcase.ToGoCamel(args.OutputName.Local)
 		args.ReturnFields = make([]field, len(args.OutputFields))
 		for i, v := range args.OutputFields {
 			args.ReturnFields[i] = field{
