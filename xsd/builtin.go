@@ -89,6 +89,8 @@ func (b Builtin) Name() xml.Name {
 	return xml.Name{Space: space, Local: name}
 }
 
+func (b Builtin) TypeName() xml.Name { return b.Name() }
+
 // ParseBuiltin looks up a Builtin by name. If qname does not name a built-in type,
 // ParseBuiltin returns a non-nil error.
 func ParseBuiltin(qname xml.Name) (Builtin, error) {
