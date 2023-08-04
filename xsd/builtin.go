@@ -9,14 +9,15 @@ import (
 
 //go:generate stringer -type=Builtin
 
-// A built-in represents one of the built-in xml schema types, as
-// defined in the W3C specification, "XML Schema Part 2: Datatypes".
+// A Builtin represents one of the built-in xml schema types, as defined in the W3C
+// specification, "XML Schema Part 2: Datatypes".
 //
 // http://www.w3.org/TR/xmlschema-2/#built-in-datatypes
 type Builtin int
 
 func (Builtin) isType() {}
 
+// All Builtin types.
 const (
 	AnyType Builtin = iota
 	ENTITIES
@@ -70,9 +71,8 @@ const (
 	AnySimpleType
 )
 
-// Name returns the canonical name of the built-in type. All
-// built-in types are in the standard XML schema namespace,
-// http://www.w3.org/2001/XMLSchema, or the XML namespace,
+// Name returns the canonical name of the built-in type. All built-in types are in the
+// standard XML schema namespace, http://www.w3.org/2001/XMLSchema, or the XML namespace,
 // http://www.w3.org/2009/01/xml.xsd
 func (b Builtin) Name() xml.Name {
 	name := b.String()
@@ -86,12 +86,11 @@ func (b Builtin) Name() xml.Name {
 		r, sz := utf8.DecodeRuneInString(name)
 		name = string(unicode.ToLower(r)) + name[sz:]
 	}
-	return xml.Name{space, name}
+	return xml.Name{Space: space, Local: name}
 }
 
-// ParseBuiltin looks up a Builtin by name. If qname
-// does not name a built-in type, ParseBuiltin returns
-// a non-nil error.
+// ParseBuiltin looks up a Builtin by name. If qname does not name a built-in type,
+// ParseBuiltin returns a non-nil error.
 func ParseBuiltin(qname xml.Name) (Builtin, error) {
 	for i := AnyType; i <= AnySimpleType; i++ {
 		if i.Name() == qname {

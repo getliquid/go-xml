@@ -3,7 +3,6 @@ package main // import "github.com/getliquid/go-xml/cmd/xsdparse"
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -12,7 +11,7 @@ import (
 )
 
 var (
-	TargetNS = flag.String("ns", "", "Namespace of schea to print")
+	targetNS = flag.String("ns", "", "Namespace of schea to print")
 )
 
 func main() {
@@ -26,11 +25,12 @@ func main() {
 	docs := make([][]byte, 0, flag.NArg())
 
 	for _, filename := range flag.Args() {
-		if data, err := ioutil.ReadFile(filename); err != nil {
+		data, err := os.ReadFile(filename)
+		if err != nil {
 			log.Fatal(err)
-		} else {
-			docs = append(docs, data)
 		}
+
+		docs = append(docs, data)
 	}
 
 	filterSchema := make(map[string]struct{})
@@ -51,7 +51,7 @@ func main() {
 	selected := make([]*xmltree.Element, 0, len(norm))
 	for _, root := range norm {
 		tns := root.Attr("", "targetNamespace")
-		if *TargetNS != "" && *TargetNS == tns {
+		if *targetNS != "" && *targetNS == tns {
 			selected = append(selected, root)
 		} else if _, ok := filterSchema[tns]; !ok {
 			selected = append(selected, root)

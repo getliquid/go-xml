@@ -225,7 +225,7 @@ func ExampleMarshal() {
 	// </toc>
 }
 
-func ExampleMarshalNested() {
+func ExampleMarshalIndent() {
 	var input = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	<toc>
 	  <level1>

@@ -2,7 +2,7 @@ package xmltree
 
 import (
 	"encoding/xml"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 )
@@ -149,7 +149,7 @@ func parseDoc(t *testing.T, document []byte) *Element {
 }
 
 func parseFile(t *testing.T, filename string) *Element {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,8 +161,8 @@ func TestParse(t *testing.T) {
 		Data []byte `xml:",innerxml"`
 	}
 	el := parseDoc(t, exampleDoc)
-	el.walk(func(el *Element) {
-		el.walk(func(el *Element) {
+	_ = el.walk(func(el *Element) {
+		_ = el.walk(func(el *Element) {
 			if err := Unmarshal(el, &buf); err != nil {
 				t.Error(err)
 			}
@@ -176,8 +176,10 @@ func TestSearch(t *testing.T) {
 
 	result := root.Search("http://schemas.xmlsoap.org/wsdl/", "binding")
 	if len(result) != 2 {
-		t.Errorf("Expected Search(\"http://schemas.xmlsoap.org/wsdl/\", \"binding\") to return 2 results, got %d",
-			len(result))
+		t.Errorf(
+			"Expected Search(\"http://schemas.xmlsoap.org/wsdl/\", \"binding\") to return 2 results, got %d",
+			len(result),
+		)
 	}
 }
 
@@ -196,7 +198,7 @@ func TestNSResolution(t *testing.T) {
 	}
 
 	defaultns := root.SearchFunc(func(el *Element) bool {
-		if (el.Name != xml.Name{"http://schemas.xmlsoap.org/wsdl/", "binding"}) {
+		if (el.Name != xml.Name{Space: "http://schemas.xmlsoap.org/wsdl/", Local: "binding"}) {
 			return false
 		}
 		return el.Attr("", "name") == "wseDocReciboSoap12"
@@ -204,8 +206,15 @@ func TestNSResolution(t *testing.T) {
 
 	name := defaultns.Resolve("foo")
 	if name.Space != "http://custom/" {
-		t.Errorf("Resolve default namespace at <%s name=%q>: wanted %q, got %q",
-			defaultns.Prefix(defaultns.Name), defaultns.Attr("", "name"), defaultns.Attr("", "xmlns"), name.Space)
+		t.Errorf(
+			"Resolve default namespace at <%s name=%q>: wanted %q, got %q",
+			defaultns.Prefix(
+				defaultns.Name,
+			),
+			defaultns.Attr("", "name"),
+			defaultns.Attr("", "xmlns"),
+			name.Space,
+		)
 		t.Logf("NS stack is %# v", defaultns.Scope)
 	}
 }
@@ -281,7 +290,6 @@ func TestUnmarshal(t *testing.T) {
 			}
 		}
 		t.Logf("test unmarshal %s", Marshal(item))
-		break
 	}
 	if err := Unmarshal(item, &v); err != nil {
 		t.Fatal(err)

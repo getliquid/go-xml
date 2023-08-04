@@ -22,11 +22,13 @@ import (
 	"strings"
 	"text/template"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
 )
 
 var genFuncMap = template.FuncMap{
-	"title":    strings.Title,
+	"title":    cases.Caser.String,
 	"split":    strings.Split,
 	"join":     strings.Join,
 	"sanitize": Sanitize,
@@ -45,9 +47,8 @@ func TypeDecl(name *ast.Ident, typ ast.Expr) *ast.GenDecl {
 	}
 }
 
-// Sanitize modifies any names that are reserved in
-// Go, so that they may be used as identifiers without
-// causing a syntax error.
+// Sanitize modifies any names that are reserved in Go, so that they may be used as
+// identifiers without causing a syntax error.
 func Sanitize(name string) string {
 	switch name {
 	case "break", "default", "func", "interface", "select",
@@ -67,10 +68,9 @@ func ToString(expr ast.Expr) (string, error) {
 	return buf.String(), err
 }
 
-// Struct creates a struct{} expression. The arguments are a series
-// of name/type/tag tuples. Name must be of type *ast.Ident, type
-// must be of type ast.Expr, and tag must be of type *ast.BasicLit,
-// The number of arguments must be a multiple of 3, or a run-time
+// Struct creates a struct{} expression. The arguments are a series of name/type/tag
+// tuples. Name must be of type *ast.Ident, type must be of type ast.Expr, and tag must be
+// of type *ast.BasicLit, The number of arguments must be a multiple of 3, or a run-time
 // panic will occur.
 func Struct(args ...ast.Expr) *ast.StructType {
 	fields := new(ast.FieldList)
@@ -94,8 +94,7 @@ func Struct(args ...ast.Expr) *ast.StructType {
 	return &ast.StructType{Fields: fields}
 }
 
-// FieldList generates a field list from strings in the form "[name]
-// expr".
+// FieldList generates a field list from strings in the form "[name] expr".
 func FieldList(fields ...string) (*ast.FieldList, error) {
 	result := &ast.FieldList{List: []*ast.Field{}}
 	for _, s := range fields {
@@ -119,8 +118,8 @@ func FieldList(fields ...string) (*ast.FieldList, error) {
 	return result, nil
 }
 
-// String generates a literal string. If the string contains a double
-// quote, backticks are used for quoting instead.
+// String generates a literal string. If the string contains a double quote, backticks are
+// used for quoting instead.
 func String(s string) *ast.BasicLit {
 	if strings.Contains(s, "\"") && !strings.Contains(s, "`") {
 		return &ast.BasicLit{Kind: token.STRING, Value: "`" + s + "`"}
@@ -128,10 +127,10 @@ func String(s string) *ast.BasicLit {
 	return &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(s)}
 }
 
-// Public turns a string into a public (uppercase)
-// identifier.
+// Public turns a string into a public (uppercase) identifier.
 func Public(name string) *ast.Ident {
-	return ast.NewIdent(strings.Title(name))
+	caser := cases.Title(language.English)
+	return ast.NewIdent(caser.String(name))
 }
 
 func constDecl(kind token.Token, args ...string) *ast.GenDecl {
@@ -165,44 +164,43 @@ func constDecl(kind token.Token, args ...string) *ast.GenDecl {
 	return &decl
 }
 
-// SimpleType creates an identifier suitable
-// for use as a type expression.
+// SimpleType creates an identifier suitable for use as a type expression.
 func SimpleType(name string) ast.Expr {
 	return ast.NewIdent(name)
 }
 
-// ConstInt creates a series of numeric const declarations from
-// the name/value pairs in args.
+// ConstInt creates a series of numeric const declarations from the name/value pairs in
+// args.
 func ConstInt(args ...string) *ast.GenDecl {
 	return constDecl(token.INT, args...)
 }
 
-// ConstString creates a series of string const declarations from
-// the name/value pairs in args.
+// ConstString creates a series of string const declarations from the name/value pairs in
+// args.
 func ConstString(args ...string) *ast.GenDecl {
 	return constDecl(token.STRING, args...)
 }
 
-// ConstFloat creates a series of floating-point const
-// declarations from the name/value pairs in args.
+// ConstFloat creates a series of floating-point const declarations from the name/value
+// pairs in args.
 func ConstFloat(args ...string) *ast.GenDecl {
 	return constDecl(token.FLOAT, args...)
 }
 
-// ConstChar creates a series of character const
-// declarations from the name/value pairs in args.
+// ConstChar creates a series of character const declarations from the name/value pairs in
+// args.
 func ConstChar(args ...string) *ast.GenDecl {
 	return constDecl(token.CHAR, args...)
 }
 
-// ConstImaginary creates a series of imaginary const
-// declarations from the name/value pairs in args.
+// ConstImaginary creates a series of imaginary const declarations from the name/value
+// pairs in args.
 func ConstImaginary(args ...string) *ast.GenDecl {
 	return constDecl(token.IMAG, args...)
 }
 
-// PackageDoc inserts package-level comments into a file,
-// preceding the "package" statement.
+// PackageDoc inserts package-level comments into a file, preceding the "package"
+// statement.
 func PackageDoc(file *ast.File, comments ...string) *ast.File {
 	if len(comments) == 0 {
 		return file
@@ -225,11 +223,15 @@ func CommentGroup(comments ...string) *ast.CommentGroup {
 	return &group
 }
 
+// Function represents a function AST node.
 type Function struct {
-	name, receiver, godoc string
-	args, returns         []string
-	err                   error
-	body                  string
+	err      error
+	name     string
+	receiver string
+	godoc    string
+	body     string
+	args     []string
+	returns  []string
 }
 
 // Name returns the name of the function.
@@ -237,12 +239,13 @@ func (fn *Function) Name() string {
 	return fn.name
 }
 
+// Func constructs a new function with the given name.
 func Func(name string) *Function {
 	return &Function{name: name}
 }
 
-// Decl generates Go source for a Func.  an error is returned if the
-// body, or parameters cannot be parsed.
+// Decl generates Go source for a Func.  an error is returned if the body, or parameters
+// cannot be parsed.
 func (fn *Function) Decl() (*ast.FuncDecl, error) {
 	var err error
 	var comments *ast.CommentGroup
@@ -280,7 +283,12 @@ func (fn *Function) Decl() (*ast.FuncDecl, error) {
 	}
 	body, err := parseBlock(fn.body)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse function body of %s: %v in\n%s", fn.name, err, fn.body)
+		return nil, fmt.Errorf(
+			"could not parse function body of %s: %v in\n%s",
+			fn.name,
+			err,
+			fn.body,
+		)
 	}
 	return &ast.FuncDecl{
 		Doc:  comments,
@@ -303,15 +311,13 @@ func (fn *Function) MustDecl() *ast.FuncDecl {
 	return decl
 }
 
-// Body sets the body of a function. The body should not include
-// enclosing braces.
+// Body sets the body of a function. The body should not include enclosing braces.
 func (fn *Function) Body(format string, v ...interface{}) *Function {
 	fn.body = fmt.Sprintf(format, v...)
 	return fn
 }
 
-// BodyTmpl allows use of the text/template package to construct
-// the body of a function.
+// BodyTmpl allows use of the text/template package to construct the body of a function.
 func (fn *Function) BodyTmpl(tmpl string, dot interface{}) *Function {
 	var buf bytes.Buffer
 	t, err := template.New(fn.Name()).Funcs(genFuncMap).Parse(tmpl)
@@ -325,15 +331,14 @@ func (fn *Function) BodyTmpl(tmpl string, dot interface{}) *Function {
 	return fn
 }
 
-// Returns sets the return values of a function. Each return
-// value should be a string matching the Go syntax for a
-// single return value.
+// Returns sets the return values of a function. Each return value should be a string
+// matching the Go syntax for a single return value.
 func (fn *Function) Returns(values ...string) *Function {
 	fn.returns = values
 	return fn
 }
 
-// Comments sets the Godoc comments for the function.
+// Comment sets the Godoc comments for the function.
 func (fn *Function) Comment(s string) *Function {
 	fn.godoc = s
 	return fn
@@ -345,16 +350,15 @@ func (fn *Function) Args(args ...string) *Function {
 	return fn
 }
 
-// Receiver turns the function into a method operating on
-// the specified type.
+// Receiver turns the function into a method operating on the specified type.
 func (fn *Function) Receiver(receiver string) *Function {
 	fn.receiver = receiver
 	return fn
 }
 
-// Declarations parses a list of Go source code blocks and converts
-// them into *ast.Decl values. If a parsing error occurs, it is returned
-// immediately and no further parsing takes place.
+// Declarations parses a list of Go source code blocks and converts them into *ast.Decl
+// values. If a parsing error occurs, it is returned immediately and no further parsing
+// takes place.
 func Declarations(blocks ...string) ([]ast.Decl, error) {
 	var buf bytes.Buffer
 	decls := make([]ast.Decl, 0, len(blocks))
@@ -372,8 +376,8 @@ func Declarations(blocks ...string) ([]ast.Decl, error) {
 	return decls, nil
 }
 
-// Snippets evaluates zero or more input templates with dot set to val
-// and parses them as Go source code.
+// Snippets evaluates zero or more input templates with dot set to val and parses them as
+// Go source code.
 func Snippets(val interface{}, snippets ...string) ([]ast.Decl, error) {
 	var buf bytes.Buffer
 	blocks := make([]string, 0, len(snippets))
@@ -415,8 +419,7 @@ func ExprString(expr ast.Expr) string {
 	return buf.String()
 }
 
-// TagKey gets the struct tag item with the
-// given key.
+// TagKey gets the struct tag item with the given key.
 func TagKey(field *ast.Field, key string) string {
 	if field.Tag != nil {
 		return ""
@@ -424,29 +427,25 @@ func TagKey(field *ast.Field, key string) string {
 	return reflect.StructTag(field.Tag.Value).Get(key)
 }
 
-// FormattedSource converts an abstract syntax tree to
-// formatted Go source code.
+// FormattedSource converts an abstract syntax tree to formatted Go source code.
 func FormattedSource(file *ast.File, output string) ([]byte, error) {
 	var buf bytes.Buffer
 
 	// TrimSuffix allows *nix and Windows to produce identical output
 	generatorName := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
 	generatedByComment := fmt.Sprintf("// Code generated by %s. DO NOT EDIT.\n\n", generatorName)
-	io.WriteString(&buf, generatedByComment)
+	_, _ = io.WriteString(&buf, generatedByComment)
 
 	fileset := token.NewFileSet()
 
-	// our *ast.File did not come from a real Go source
-	// file. As such, all of its node positions are 0, and
-	// the go/printer package will print the package
-	// comment between the package statement and
-	// the package name. The most straightforward way
-	// to work around this is to put the package comment
-	// there ourselves.
+    // our *ast.File did not come from a real Go source file. As such, all of its node
+    // positions are 0, and the go/printer package will print the package comment between
+    // the package statement and the package name. The most straightforward way to work
+    // around this is to put the package comment there ourselves.
 	if file.Doc != nil {
 		for _, v := range file.Doc.List {
-			io.WriteString(&buf, v.Text)
-			io.WriteString(&buf, "\n")
+			_, _ = io.WriteString(&buf, v.Text)
+			_, _ = io.WriteString(&buf, "\n")
 		}
 		file.Doc = nil
 	}

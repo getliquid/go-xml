@@ -1,7 +1,6 @@
 package wsdlgen
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -15,11 +14,11 @@ type testLogger struct {
 func (t testLogger) Printf(format string, args ...interface{}) { t.Logf(format, args...) }
 
 func testGen(t *testing.T, files ...string) {
-	output_file, err := ioutil.TempFile("", "wsdlgen")
+	outputFile, err := os.CreateTemp("", "wsdlgen")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(output_file.Name())
+	defer os.Remove(outputFile.Name())
 
 	var cfg Config
 	cfg.Option(DefaultOptions...)
@@ -27,13 +26,13 @@ func testGen(t *testing.T, files ...string) {
 	cfg.xsdgen.Option(xsdgen.DefaultOptions...)
 	cfg.xsdgen.Option(xsdgen.UseFieldNames())
 
-	args := []string{"-vv", "-o", output_file.Name()}
+	args := []string{"-vv", "-o", outputFile.Name()}
 	err = cfg.GenCLI(append(args, files...)...)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	if data, err := ioutil.ReadFile(output_file.Name()); err != nil {
+	if data, err := os.ReadFile(outputFile.Name()); err != nil {
 		t.Error(err)
 	} else {
 		t.Logf("\n%s\n", data)

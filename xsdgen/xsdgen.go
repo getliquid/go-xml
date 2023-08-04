@@ -34,7 +34,7 @@ type errorList []error
 func (l errorList) Error() string {
 	var buf bytes.Buffer
 	for _, err := range l {
-		io.WriteString(&buf, err.Error()+"\n")
+		_, _ = io.WriteString(&buf, err.Error()+"\n")
 	}
 	return buf.String()
 }
@@ -82,7 +82,7 @@ type Code struct {
 // DocType retrieves the complexType for the provided target
 // namespace.
 func (c *Code) DocType(targetNS string) (*xsd.ComplexType, bool) {
-	key := xml.Name{targetNS, "_self"}
+	key := xml.Name{Space: targetNS, Local: "_self"}
 	doc, ok := c.types[key].(*xsd.ComplexType)
 	return doc, ok
 }
@@ -223,17 +223,7 @@ func (cfg *Config) gen(primaries, deps []xsd.Schema) (*Code, error) {
 		}
 	})
 
-	// 1. BUILD local dependency graph (map of structs that are used by other struct)
-	// 2. ADD XMLName to any struct that is _NOT_ used (i.e. the toplevel structs)
-	// for d, spec := range code.decls {
-	// 	cfg.debugf("canonicalizing XMLName for %s", d)
-	//     str, isStruct := spec.expr.(*ast.StructType)
-	//     if !isStruct {
-	//         continue
-	//     }
-	//
-	//
-	// }
+	cfg.debugf("removing XMLName field for non-primary types.")
 
 	for _, spec := range code.decls {
 		s, isStruct := spec.expr.(*ast.StructType)
@@ -270,16 +260,16 @@ func (cfg *Config) gen(primaries, deps []xsd.Schema) (*Code, error) {
 
 // GenAST generates a Go abstract syntax tree with
 // the type declarations contained in the xml schema document.
-func (code *Code) GenAST() (*ast.File, error) {
+func (c *Code) GenAST() (*ast.File, error) {
 	var file ast.File
 
-	keys := make([]string, 0, len(code.decls))
-	for name := range code.decls {
+	keys := make([]string, 0, len(c.decls))
+	for name := range c.decls {
 		keys = append(keys, name)
 	}
 	sort.Strings(keys)
 	for _, name := range keys {
-		info := code.decls[name]
+		info := c.decls[name]
 		typeDecl := &ast.GenDecl{
 			Doc: gen.CommentGroup(info.doc),
 			Tok: token.TYPE,
@@ -295,7 +285,7 @@ func (code *Code) GenAST() (*ast.File, error) {
 			file.Decls = append(file.Decls, f)
 		}
 	}
-	pkgname := code.cfg.pkgname
+	pkgname := c.cfg.pkgname
 	if pkgname == "" {
 		pkgname = "ws"
 	}
@@ -304,13 +294,14 @@ func (code *Code) GenAST() (*ast.File, error) {
 }
 
 type spec struct {
-	name, doc   string
 	expr        ast.Expr
-	private     bool
-	methods     []*ast.FuncDecl
 	xsdType     xsd.Type
+	name        string
+	doc         string
+	methods     []*ast.FuncDecl
 	helperTypes []xml.Name
 	helperFuncs []string
+	private     bool
 }
 
 // Simplifies complex types derived from other complex types by merging
@@ -398,10 +389,9 @@ func (cfg *Config) expandComplexTypes(types []xsd.Type) []xsd.Type {
 	return types
 }
 
-// To reduce the size of the Go source generated, all intermediate types
-// are "squashed"; every type should be based on a Builtin or another
-// type that the user wants included in the Go source. In affect, what we
-// want to do is take the linked list:
+// To reduce the size of the Go source generated, all intermediate types are "squashed";
+// every type should be based on a Builtin or another type that the user wants included in
+// the Go source. In effect, what we want to do is take the linked list:
 //
 //	t1 -> t2 -> t3 -> builtin
 //
@@ -428,7 +418,7 @@ func (cfg *Config) flatten(types map[xml.Name]xsd.Type) []xsd.Type {
 				continue
 			}
 		}
-		if t := cfg.flatten1(t, push, 0); t != nil {
+		if t = cfg.flatten1(t, push, 0); t != nil {
 			push(t)
 		}
 	}
@@ -836,9 +826,15 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 		})
 	}
 
+	name := cfg.public(t.TypeName())
+	if t.Base != nil {
+		//overrides = append(overrides, fieldOverride{})
+		name = cfg.public(t.Base.TypeName())
+	}
+
 	s := spec{
 		doc:         t.Doc,
-		name:        cfg.public(t.Name),
+		name:        name,
 		expr:        expr,
 		xsdType:     t,
 		helperTypes: helperTypes,

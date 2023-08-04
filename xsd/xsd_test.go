@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -36,14 +36,14 @@ func (b blob) keys() []string {
 }
 
 type test struct {
-	actual   Schema
 	expected map[string]blob
+	actual   Schema
 }
 
 func (tt *test) Test(t *testing.T) {
 	for _, typeName := range keys(tt.expected) {
 		expected := tt.expected[typeName]
-		xmlName := xml.Name{"tns", typeName}
+		xmlName := xml.Name{Space: "tns", Local: typeName}
 		xsdType, ok := tt.actual.Types[xmlName]
 
 		if !ok {
@@ -151,13 +151,13 @@ func unmarshal(t *testing.T, data []byte) blob {
 	return result
 }
 
-// Parses XML fragments in testdata folder. To put multiple schema, wrap
-// them in a <test> tag
+// Parses XML fragments in testdata folder. To put multiple schema, wrap them in a <test>
+// tag
 func parseFragment(t *testing.T, filename string) (Schema, []*xmltree.Element) {
 	const tmpl = `<schema targetNamespace="tns" ` +
 		`xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="tns">%s</schema>`
-	container := xml.Name{"", "test"}
-	data, err := ioutil.ReadFile(filename)
+	container := xml.Name{Space: "", Local: "test"}
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func parseFragment(t *testing.T, filename string) (Schema, []*xmltree.Element) {
 func parseAnswer(t *testing.T, filename string) map[string]blob {
 	result := make(map[string]blob)
 
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +215,7 @@ func TestCases(t *testing.T) {
 		schema, docs := parseFragment(t, base+".xsd")
 		answer := parseAnswer(t, base+".json")
 
-		testCase := test{schema, answer}
+		testCase := test{expected: answer, actual: schema}
 		if !t.Run(filepath.Base(base), testCase.Test) {
 			t.Logf("subtest in %s.json failed", base)
 			t.Logf("normalized XSDs:")

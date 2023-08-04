@@ -29,6 +29,8 @@ const (
 	schemaInstanceNS = "http://www.w3.org/2001/XMLSchema-instance"
 )
 
+// Type is a tag interface.
+//
 // Types in XML Schema Documents are derived from one of the built-in types
 // defined by the standard, by restricting or extending the range of values
 // a type may contain. A Type may be one of *SimpleType, *ComplexType,
@@ -36,6 +38,7 @@ const (
 type Type interface {
 	// just for compile-time type checking
 	isType()
+	TypeName() xml.Name
 }
 
 // An Element describes an XML element that may appear as part of a complex
@@ -139,7 +142,8 @@ func findType(t Type, name xml.Name) Type {
 // "stub" Type, which we can resolve in a second pass.
 type linkedType xml.Name
 
-func (linkedType) isType() {}
+func (linkedType) isType()              {}
+func (l linkedType) TypeName() xml.Name { return xml.Name(l) }
 
 // A ComplexType describes an XML element that may contain attributes
 // and elements in its content. Complex types are derived by extending
@@ -174,7 +178,8 @@ type ComplexType struct {
 	Mixed bool
 }
 
-func (*ComplexType) isType() {}
+func (*ComplexType) isType()              {}
+func (c *ComplexType) TypeName() xml.Name { return c.Name }
 
 // A SimpleType describes an XML element that does not contain elements
 // or attributes. SimpleTypes are suitable for use as attribute values.
@@ -210,7 +215,8 @@ type SimpleType struct {
 	Base Type
 }
 
-func (*SimpleType) isType() {}
+func (*SimpleType) isType()              {}
+func (s *SimpleType) TypeName() xml.Name { return s.Name }
 
 // A SimpleType can be derived from a built-in or SimpleType by
 // restricting the set of values it may contain. The xsd package only
@@ -251,7 +257,7 @@ func (a annotation) append(extra annotation) annotation {
 // An <xs:annotation> element may contain zero or more <xs:documentation>
 // children.  The xsd package joins the content of these children, separated
 // with blank lines.
-func (doc *annotation) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+func (a *annotation) UnmarshalXML(d *xml.Decoder, _ xml.StartElement) error {
 	buf := make([][]byte, 1)
 	var (
 		tok xml.Token
@@ -269,19 +275,19 @@ Loop:
 		case xml.EndElement:
 			break Loop
 		case xml.StartElement:
-			if (tok.Name != xml.Name{schemaNS, "documentation"}) {
-				if err := d.Skip(); err != nil {
+			if (tok.Name != xml.Name{Space: schemaNS, Local: "documentation"}) {
+				if err = d.Skip(); err != nil {
 					return err
 				}
 			}
 			var frag []byte
-			if err := d.DecodeElement(&frag, &tok); err != nil {
+			if err = d.DecodeElement(&frag, &tok); err != nil {
 				return err
 			}
 			buf = append(buf, bytes.TrimSpace(frag))
 		}
 	}
-	*doc = annotation(bytes.TrimSpace(bytes.Join(buf, []byte("\n\n"))))
+	*a = annotation(bytes.TrimSpace(bytes.Join(buf, []byte("\n\n"))))
 
 	if err == io.EOF {
 		return nil
@@ -320,9 +326,10 @@ func Base(t Type) Type {
 	panic(fmt.Sprintf("xsd: unexpected xsd.Type %[1]T %[1]v passed to Base", t))
 }
 
-// The xsd package bundles a number of well-known schemas.
-// These schemas are always added to the list of available schema
-// when parsing an XML schema using the Parse function.
+// StandardSchema represents the set of standard schema's for XSD.
+//
+// The xsd package bundles a number of well-known schemas. These schemas are always added
+// to the list of available schema when parsing an XML schema using the Parse function.
 var StandardSchema = [][]byte{
 	soapenc11xsd, // http://schemas.xmlsoap.org/soap/encoding/
 	xmlnsxsd,     // http://www.w3.org/XML/1998/namespace

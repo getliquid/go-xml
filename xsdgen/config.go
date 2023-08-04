@@ -11,6 +11,8 @@ import (
 
 	"github.com/getliquid/go-xml/internal/gen"
 	"github.com/getliquid/go-xml/xsd"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // A Config holds user-defined overrides and filters that are used when
@@ -381,6 +383,9 @@ func HandleSOAPArrayType() Option {
 	}
 }
 
+// SOAPArrayAsSlice converts SOAP arrays from a single element struct to a type alias for
+// a slice.
+//
 // SOAP 1.1 defines an Array as
 //
 //	<xs:complexType name="Array">
@@ -443,7 +448,7 @@ func (cfg *Config) expr(t xsd.Type) (ast.Expr, error) {
 	if t, ok := t.(xsd.Builtin); ok {
 		ex := builtinExpr(t)
 		if ex == nil {
-			return nil, fmt.Errorf("Unknown built-in type %q", t.Name().Local)
+			return nil, fmt.Errorf("unknown built-in type %q", t.Name().Local)
 		}
 		return ex, nil
 	}
@@ -474,7 +479,8 @@ func (cfg *Config) public(name xml.Name) string {
 	if cfg.nameTransform != nil {
 		name = cfg.nameTransform(name)
 	}
-	return strings.Title(name.Local)
+	caser := cases.Title(language.AmericanEnglish)
+	return caser.String(name.Local)
 }
 
 //

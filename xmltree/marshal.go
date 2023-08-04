@@ -7,10 +7,9 @@ import (
 	"text/template"
 )
 
-// NOTE(droyo) As of go1.5.1, the encoding/xml package does not resolve
-// prefixes in attribute names. Therefore we add .Name.Space verbatim
-// instead of trying to resolve it. One consequence is this is that we cannot
-// rename prefixes without some work.
+// NOTE(droyo) As of go1.5.1, the encoding/xml package does not resolve prefixes in
+// attribute names. Therefore we add .Name.Space verbatim instead of trying to resolve it.
+// One consequence is this is that we cannot rename prefixes without some work.
 var tagTmpl = template.Must(template.New("Marshal XML tags").Parse(
 	`{{define "start" -}}
 	<{{.Scope.Prefix .Name -}}
@@ -22,13 +21,13 @@ var tagTmpl = template.Must(template.New("Marshal XML tags").Parse(
 	{{define "end" -}}
 	</{{.Prefix .Name}}>{{end}}`))
 
-// Marshal produces the XML encoding of an Element as a self-contained
-// document. The xmltree package may adjust the declarations of XML
-// namespaces if the Element has been modified, or is part of a larger scope,
-// such that the document produced by Marshal is a valid XML document.
+// Marshal produces the XML encoding of an Element as a self-contained document. The
+// xmltree package may adjust the declarations of XML namespaces if the Element has been
+// modified, or is part of a larger scope, such that the document produced by Marshal is a
+// valid XML document.
 //
-// The return value of Marshal will use the utf-8 encoding regardless of
-// the original encoding of the source document.
+// The return value of Marshal will use the utf-8 encoding regardless of the original
+// encoding of the source document.
 func Marshal(el *Element) []byte {
 	var buf bytes.Buffer
 	if err := Encode(&buf, el); err != nil {
@@ -87,7 +86,7 @@ func (e *encoder) encode(el, parent *Element, visited map[*Element]struct{}) err
 	}
 	if _, ok := visited[el]; ok {
 		// We have a cycle. Leave a comment, but no error
-		e.w.Write([]byte("<!-- cycle detected -->"))
+		_, _ = e.w.Write([]byte("<!-- cycle detected -->"))
 		return nil
 	}
 	scope := diffScope(parent, el)
@@ -96,7 +95,7 @@ func (e *encoder) encode(el, parent *Element, visited map[*Element]struct{}) err
 	}
 	if len(el.Children) == 0 {
 		if len(el.Content) > 0 {
-			e.w.Write(el.Content)
+			_, _ = e.w.Write(el.Content)
 		} else {
 			return nil
 		}
@@ -108,14 +107,12 @@ func (e *encoder) encode(el, parent *Element, visited map[*Element]struct{}) err
 		}
 		delete(visited, el)
 	}
-	if err := e.encodeCloseTag(el, len(visited)); err != nil {
-		return err
-	}
-	return nil
+
+	return e.encodeCloseTag(el, len(visited))
 }
 
-// diffScope returns the Scope of the child element, minus any
-// identical namespace declaration in the parent's scope.
+// diffScope returns the Scope of the child element, minus any identical namespace
+// declaration in the parent's scope.
 func diffScope(parent, child *Element) Scope {
 	if parent == nil { // root element
 		return child.Scope
@@ -136,7 +133,7 @@ func diffScope(parent, child *Element) Scope {
 func (e *encoder) encodeOpenTag(el *Element, scope Scope, depth int) error {
 	if e.pretty {
 		for i := 0; i < depth; i++ {
-			io.WriteString(e.w, e.indent)
+			_, _ = io.WriteString(e.w, e.indent)
 		}
 	}
 	var tag = struct {
@@ -148,7 +145,7 @@ func (e *encoder) encodeOpenTag(el *Element, scope Scope, depth int) error {
 	}
 	if e.pretty {
 		if len(el.Children) > 0 || len(el.Content) == 0 {
-			io.WriteString(e.w, "\n")
+			_, _ = io.WriteString(e.w, "\n")
 		}
 	}
 	return nil
@@ -158,7 +155,7 @@ func (e *encoder) encodeCloseTag(el *Element, depth int) error {
 	if e.pretty {
 		for i := 0; i < depth; i++ {
 			if len(el.Children) > 0 {
-				io.WriteString(e.w, e.indent)
+				_, _ = io.WriteString(e.w, e.indent)
 			}
 		}
 	}
@@ -166,7 +163,7 @@ func (e *encoder) encodeCloseTag(el *Element, depth int) error {
 		return err
 	}
 	if e.pretty {
-		io.WriteString(e.w, "\n")
+		_, _ = io.WriteString(e.w, "\n")
 	}
 	return nil
 }

@@ -14,17 +14,20 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"io/ioutil"
-	"strings"
+	"os"
 
 	"github.com/getliquid/go-xml/internal/gen"
 	"github.com/getliquid/go-xml/wsdl"
 	"github.com/getliquid/go-xml/xsd"
 	"github.com/getliquid/go-xml/xsdgen"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
-// Types conforming to the Logger interface can receive information about
-// the code generation process.
+// A Logger interface for generic logging.
+//
+// Types conforming to the Logger interface can receive information about the code
+// generation process.
 type Logger interface {
 	Printf(format string, v ...interface{})
 }
@@ -36,8 +39,7 @@ type printer struct {
 	file *ast.File
 }
 
-// Provides aspects about an RPC call to the template for the function
-// bodies.
+// Provides aspects about an RPC call to the template for the function bodies.
 type opArgs struct {
 	// formatted with appropriate variable names
 	input, output []string
@@ -53,8 +55,8 @@ type opArgs struct {
 	// Name of the method to call
 	MsgName xml.Name
 
-	// if we're returning individual values, these slices
-	// are in an order matching the input/output slices.
+	// if we're returning individual values, these slices are in an order matching the
+	// input/output slices.
 	InputName, OutputName xml.Name
 	InputFields           []field
 	OutputFields          []field
@@ -72,21 +74,19 @@ type field struct {
 	Name, Type string
 	XMLName    xml.Name
 
-	// If this is a wrapper struct for >InputThreshold arguments,
-	// PublicType holds the type that we want to expose to the
-	// user. For example, if the web service expects an xsdDate
-	// to be sent to it, PublicType will be time.Time and a conversion
-	// will take place before sending the request to the server.
+	// If this is a wrapper struct for >InputThreshold arguments, PublicType holds the
+	// type that we want to expose to the user. For example, if the web service expects an
+	// xsdDate to be sent to it, PublicType will be time.Time and a conversion will take
+	// place before sending the request to the server.
 	PublicType string
 
-	// This refers to the name of the value to assign to this field
-	// in the argument list. Empty for return values.
+	// This refers to the name of the value to assign to this field in the argument list.
+	// Empty for return values.
 	InputArg string
 }
 
-// GenAST creates a Go source file containing type and method declarations
-// that can be used to access the service described in the provided set of wsdl
-// files.
+// GenAST creates a Go source file containing type and method declarations that can be
+// used to access the service described in the provided set of wsdl files.
 func (cfg *Config) GenAST(files ...string) (*ast.File, error) {
 	if len(files) == 0 {
 		return nil, errors.New("must provide at least one file name")
@@ -99,12 +99,12 @@ func (cfg *Config) GenAST(files ...string) (*ast.File, error) {
 	}
 	docs := make([][]byte, 0, len(files))
 	for _, filename := range files {
-		if data, err := ioutil.ReadFile(filename); err != nil {
+		data, err := os.ReadFile(filename)
+		if err != nil {
 			return nil, err
-		} else {
-			cfg.debugf("read %s", filename)
-			docs = append(docs, data)
 		}
+		cfg.debugf("read %s", filename)
+		docs = append(docs, data)
 	}
 
 	cfg.debugf("parsing WSDL file %s", files[0])
@@ -241,17 +241,16 @@ func (p *printer) operation(port wsdl.Port, op wsdl.Operation) error {
 			{{- end -}}
 		`, params).
 		Returns(params.output...)
-	if decl, err := fn.Decl(); err != nil {
+	decl, err := fn.Decl()
+	if err != nil {
 		return err
-	} else {
-		p.file.Decls = append(p.file.Decls, decl)
 	}
+	p.file.Decls = append(p.file.Decls, decl)
 	return nil
 }
 
-// The xsdgen package generates private types for some builtin
-// types. These types should be hidden from the user and converted
-// on the fly.
+// The xsdgen package generates private types for some builtin types. These types should
+// be hidden from the user and converted on the fly.
 func exposeType(typ string) string {
 	switch typ {
 	case "xsdDate", "xsdTime", "xsdDateTime", "gDay",
@@ -284,13 +283,19 @@ func (p *printer) getPartType(part wsdl.Part) (string, error) {
 	return "", fmt.Errorf("part %s has no element or type", part.Name)
 }
 
-func (p *printer) opArgs(addr, method string, op wsdl.Operation, input, output wsdl.Message) (opArgs, error) {
+func (p *printer) opArgs(
+	addr, method string,
+	op wsdl.Operation,
+	input, output wsdl.Message,
+) (opArgs, error) {
 	var args opArgs
 	args.Address = addr
 	args.Method = method
 	args.SOAPAction = op.SOAPAction
 	args.MsgName = op.Name
 	args.InputName = input.Name
+
+    caser := cases.Title(language.English)
 	for _, part := range input.Parts {
 		typ, err := p.getPartType(part)
 		if err != nil {
@@ -303,18 +308,18 @@ func (p *printer) opArgs(addr, method string, op wsdl.Operation, input, output w
 		}
 		args.input = append(args.input, vname+" "+inputType)
 		args.InputFields = append(args.InputFields, field{
-			Name:       strings.Title(part.Name),
+			Name:       caser.String(part.Name),
 			Type:       typ,
 			PublicType: exposeType(typ),
-			XMLName:    xml.Name{p.wsdl.TargetNS, part.Name},
+			XMLName:    xml.Name{Space: p.wsdl.TargetNS, Local: part.Name},
 			InputArg:   vname,
 		})
 	}
 	if len(args.input) > p.maxArgs {
-		args.InputType = strings.Title(args.InputName.Local)
+		args.InputType = caser.String(args.InputName.Local)
 		args.input = []string{"v " + args.InputName.Local}
 		for i, v := range input.Parts {
-			args.InputFields[i].InputArg = "v." + strings.Title(v.Name)
+			args.InputFields[i].InputArg = "v." + caser.String(v.Name)
 		}
 	}
 	args.OutputName = output.Name
@@ -326,13 +331,13 @@ func (p *printer) opArgs(addr, method string, op wsdl.Operation, input, output w
 		outputType := exposeType(typ)
 		args.output = append(args.output, outputType)
 		args.OutputFields = append(args.OutputFields, field{
-			Name:    strings.Title(part.Name),
+			Name:    caser.String(part.Name),
 			Type:    typ,
-			XMLName: xml.Name{p.wsdl.TargetNS, part.Name},
+			XMLName: xml.Name{Space: p.wsdl.TargetNS, Local: part.Name},
 		})
 	}
 	if len(args.output) > p.maxReturns {
-		args.ReturnType = strings.Title(args.OutputName.Local)
+		args.ReturnType = caser.String(args.OutputName.Local)
 		args.ReturnFields = make([]field, len(args.OutputFields))
 		for i, v := range args.OutputFields {
 			args.ReturnFields[i] = field{
@@ -343,8 +348,7 @@ func (p *printer) opArgs(addr, method string, op wsdl.Operation, input, output w
 		}
 		args.output = []string{args.ReturnType}
 	}
-	// NOTE(droyo) if we decide to name our return values,
-	// we have to change this too.
+    // NOTE(droyo) if we decide to name our return values, we have to change this too.
 	args.output = append(args.output, "error")
 
 	return args, nil

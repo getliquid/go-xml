@@ -31,19 +31,17 @@ func hasCycle(root *xmltree.Element, visited map[*xmltree.Element]struct{}) bool
 	return false
 }
 
-// A Ref contains the canonical namespace of a schema document, and
-// possibly a URI to retrieve the document from. It is not required
-// for XML Schema documents to provide the location of schema that
-// they import; it is expected that all well-known schema namespaces
-// are available to the consumer of a schema beforehand.
+// A Ref contains the canonical namespace of a schema document, and possibly a URI to
+// retrieve the document from. It is not required for XML Schema documents to provide the
+// location of schema that they import; it is expected that all well-known schema
+// namespaces are available to the consumer of a schema beforehand.
 type Ref struct {
 	Namespace, Location string
 }
 
-// Imports reads an XML document containing one or more <schema>
-// elements and returns a list of canonical XML name spaces that
-// the schema imports or includes, along with a URL for the schema,
-// if provided.
+// Imports reads an XML document containing one or more <schema> elements and returns a
+// list of canonical XML name spaces that the schema imports or includes, along with a URL
+// for the schema, if provided.
 func Imports(data []byte) ([]Ref, error) {
 	var result []Ref
 
@@ -58,7 +56,7 @@ func Imports(data []byte) ([]Ref, error) {
 	}
 
 	var schema []*xmltree.Element
-	if (root.Name == xml.Name{schemaNS, "schema"}) {
+	if (root.Name == xml.Name{Space: schemaNS, Local: "schema"}) {
 		schema = []*xmltree.Element{root}
 	} else {
 		schema = root.Search(schemaNS, "schema")
@@ -75,20 +73,18 @@ func Imports(data []byte) ([]Ref, error) {
 	return result, nil
 }
 
-// Normalize reads XML schema documents and returns xml trees
-// for each schema with the following properties:
+// Normalize reads XML schema documents and returns xml trees for each schema with the
+// following properties:
 //
-// * various XSD shorthand, such as omitting <complexContent>,
-//   are expanded into their canonical forms.
+// * various XSD shorthand, such as omitting <complexContent>, are expanded into their
+// canonical forms.
 // * all links are dereferenced by merging the linked element.
-// * all types have names. For anonymous types, unique (per
-//   namespace) names of the form "_anon1", "_anon2", etc are
-//   generated, and the attribute "_isAnonymous" is set to
-//   "true".
+// * all types have names. For anonymous types, unique (per namespace) names of the form
+// "_anon1", "_anon2", etc are generated, and the attribute "_isAnonymous" is set to
+// "true".
 //
-// Because one document may contain more than one schema, the
-// number of trees returned by Normalize may not equal the
-// number of arguments.
+// Because one document may contain more than one schema, the number of trees returned by
+// Normalize may not equal the number of arguments.
 func Normalize(docs ...[]byte) ([]*xmltree.Element, error) {
 	docs = append(docs, StandardSchema...)
 	result := make([]*xmltree.Element, 0, len(docs))
@@ -98,7 +94,7 @@ func Normalize(docs ...[]byte) ([]*xmltree.Element, error) {
 		if err != nil {
 			return nil, err
 		}
-		if (root.Name == xml.Name{schemaNS, "schema"}) {
+		if (root.Name == xml.Name{Space: schemaNS, Local: "schema"}) {
 			result = append(result, root)
 		} else {
 			result = append(result, root.Search(schemaNS, "schema")...)
@@ -127,11 +123,10 @@ func Normalize(docs ...[]byte) ([]*xmltree.Element, error) {
 	return result, nil
 }
 
-// Parse reads XML documents containing one or more <schema>
-// elements. The returned slice has one Schema for every <schema>
-// element in the documents. Parse will not fetch schema used in
-// <import> or <include> statements; use the Imports function to
-// find any additional schema documents required for a schema.
+// Parse reads XML documents containing one or more <schema> elements. The returned slice
+// has one Schema for every <schema> element in the documents. Parse will not fetch schema
+// used in <import> or <include> statements; use the Imports function to find any
+// additional schema documents required for a schema.
 func Parse(docs ...[]byte) ([]Schema, error) {
 	var (
 		result = make([]Schema, 0, len(docs))
@@ -184,22 +179,28 @@ func parseType(name xml.Name) Type {
 }
 
 func anonTypeName(n int, ns string) xml.Name {
-	return xml.Name{ns, fmt.Sprintf("_anon%d", n)}
+	return xml.Name{Space: ns, Local: fmt.Sprintf("_anon%d", n)}
 }
 
-/* Convert
+/*
+	Convert
+
 <element name="foo">
-  <complexType>
-  ...
-  </complexType>
+
+	<complexType>
+	...
+	</complexType>
+
 </element>
 
 to
 
 <element name="foo" type="foo">
-  <complexType name="foo">
-  ...
-  </complexType>
+
+	<complexType name="foo">
+	...
+	</complexType>
+
 </element>
 */
 func copyEltNamesToAnonTypes(root *xmltree.Element) {
@@ -238,8 +239,8 @@ func copyEltNamesToAnonTypes(root *xmltree.Element) {
 	}
 }
 
-// Inside a <xs:choice>, set all children to optional
-// If child is a <xs:sequence> set its children to optional
+// Inside a <xs:choice>, set all children to optional If child is a <xs:sequence> set its
+// children to optional
 func setChoicesOptional(root *xmltree.Element) error {
 
 	for _, el := range root.SearchFunc(isElem(schemaNS, "choice")) {
@@ -266,27 +267,27 @@ func setChoicesOptional(root *xmltree.Element) error {
 /*
 Convert
 
-  <xs:complexType name="foo" base="xs:anyType"/>
-    <xs:sequence>
-      <xs:element name="a">
-        <xs:simpleType base="xs:int">
-          ...
-        </xs:simpleType>
-      </xs:element>
-    </xs:sequence>
-  </xs:complexType>
+	<xs:complexType name="foo" base="xs:anyType"/>
+	  <xs:sequence>
+	    <xs:element name="a">
+	      <xs:simpleType base="xs:int">
+	        ...
+	      </xs:simpleType>
+	    </xs:element>
+	  </xs:sequence>
+	</xs:complexType>
 
 to
 
-  <xs:complexType name="foo" base="xs:anyType"/>
-    <xs:sequence>
-      <xs:element name="a">
-        <xs:simpleType name="_anon1" _isAnonymous="true" base="xs:int">
-          ...
-        </xs:simpleType>
-      </xs:element>
-    </xs:sequence>
-  </xs:complexType>
+	<xs:complexType name="foo" base="xs:anyType"/>
+	  <xs:sequence>
+	    <xs:element name="a">
+	      <xs:simpleType name="_anon1" _isAnonymous="true" base="xs:int">
+	        ...
+	      </xs:simpleType>
+	    </xs:element>
+	  </xs:sequence>
+	</xs:complexType>
 */
 func nameAnonymousTypes(root *xmltree.Element, typeCounter *int) error {
 	var (
@@ -312,7 +313,7 @@ func nameAnonymousTypes(root *xmltree.Element, typeCounter *int) error {
 			updateAttr = "memberTypes"
 			accum = true
 		default:
-			return fmt.Errorf("Did not expect <%s> to have an anonymous type",
+			return fmt.Errorf("did not expect <%s> to have an anonymous type",
 				el.Prefix(el.Name))
 		}
 		for i := 0; i < len(el.Children); i++ {
@@ -344,38 +345,38 @@ func nameAnonymousTypes(root *xmltree.Element, typeCounter *int) error {
 }
 
 /*
-
 Dereference all ref= links within a document.
 
-  <attribute name="id" type="xsd:ID" />
-  <complexType name="MyType">
-    <attribute ref="tns:id" />
-  </complexType>
+	<attribute name="id" type="xsd:ID" />
+	<complexType name="MyType">
+	  <attribute ref="tns:id" />
+	</complexType>
 
 becomes
 
-  <complexType name="MyType">
-    <attribute name="id" type="xsd:ID" />
-  </complexType>
-
+	<complexType name="MyType">
+	  <attribute name="id" type="xsd:ID" />
+	</complexType>
 */
 func flattenRef(schema []*xmltree.Element) error {
 	var (
 		depends = new(dependency.Graph)
 		index   = indexSchema(schema)
 	)
+
 	for id, el := range index.eltByID {
 		if el.Attr("", "ref") == "" {
 			continue
 		}
 		name := el.Resolve(el.Attr("", "ref"))
-		if dep, ok := index.ElementID(name, el.Name); !ok {
+		dep, ok := index.ElementID(name, el.Name)
+		if !ok {
 			return fmt.Errorf("could not find ref %s in %s",
 				el.Attr("", "ref"), el)
-		} else {
-			depends.Add(id, dep)
 		}
+		depends.Add(id, dep)
 	}
+
 	depends.Flatten(func(id int) {
 		el := index.eltByID[id]
 		if el.Attr("", "ref") == "" {
@@ -388,6 +389,7 @@ func flattenRef(schema []*xmltree.Element) error {
 		}
 		*el = *deref(el, real)
 	})
+
 	for ns, doc := range schema {
 		unpackGroups(doc)
 		if hasCycle(doc, nil) {
@@ -395,11 +397,11 @@ func flattenRef(schema []*xmltree.Element) error {
 				"in schema %d:\n%s", ns, xmltree.MarshalIndent(doc, "", "  "))
 		}
 	}
+
 	return nil
 }
 
-// Flatten a reference to an XML element, returning the full XML
-// object.
+// Flatten a reference to an XML element, returning the full XML object.
 func deref(ref, real *xmltree.Element) *xmltree.Element {
 	el := new(xmltree.Element)
 	el.Scope = ref.Scope
@@ -408,11 +410,12 @@ func deref(ref, real *xmltree.Element) *xmltree.Element {
 	el.Content = append([]byte{}, real.Content...)
 	el.Children = append([]xmltree.Element{}, real.Children...)
 
-	// Some attributes can contain a qname, and must be converted to use the
-	// xmlns prefixes in ref's scope.
+	// Some attributes can contain a qname, and must be converted to use the xmlns
+	// prefixes in ref's scope.
 	hasQName := map[xml.Name]bool{
-		xml.Name{"", "type"}: true,
+		{Space: "", Local: "type"}: true,
 	}
+
 	for i, attr := range el.StartElement.Attr {
 		if hasQName[attr.Name] {
 			xmlname := real.Resolve(attr.Value)
@@ -420,16 +423,16 @@ func deref(ref, real *xmltree.Element) *xmltree.Element {
 			el.StartElement.Attr[i] = attr
 		}
 	}
-	// If there are child elements, rather than checking all children
-	// for xmlns conversion, we can just import the xmlns prefixes
+
+	// If there are child elements, rather than checking all children for xmlns
+	// conversion, we can just import the xmlns prefixes
 	if len(el.Children) > 0 {
 		el.Scope = *real.JoinScope(&ref.Scope)
 	}
 
-	// Attributes added to the reference overwrite attributes in the
-	// referenced element.
+	// Attributes added to the reference overwrite attributes in the referenced element.
 	for _, attr := range ref.StartElement.Attr {
-		if (attr.Name != xml.Name{"", "ref"}) {
+		if (attr.Name != xml.Name{Space: "", Local: "ref"}) {
 			el.SetAttr(attr.Name.Space, attr.Name.Local, attr.Value)
 		}
 	}
@@ -437,8 +440,8 @@ func deref(ref, real *xmltree.Element) *xmltree.Element {
 	return el
 }
 
-// After dereferencing groups and attributeGroups, we need to
-// unpack them within their parent elements.
+// After dereferencing groups and attributeGroups, we need to unpack them within their
+// parent elements.
 func unpackGroups(doc *xmltree.Element) {
 	isGroup := or(isElem(schemaNS, "group"), isElem(schemaNS, "attributeGroup"))
 	hasGroups := hasChild(isGroup)
@@ -456,9 +459,8 @@ func unpackGroups(doc *xmltree.Element) {
 	}
 }
 
-// a complex type defined without any simpleContent or
-// complexContent is interpreted as shorthand for complex
-// content that restricts anyType.
+// A complex type defined without any simpleContent or complexContent is interpreted as
+// shorthand for complex content that restricts anyType.
 func expandComplexShorthand(root *xmltree.Element) {
 	isComplexType := isElem(schemaNS, "complexType")
 
@@ -502,7 +504,7 @@ Loop:
 
 func (s *Schema) addElementTypeAliases(root *xmltree.Element, types map[xml.Name]Type) error {
 	for _, el := range root.Children {
-		if (el.Name != xml.Name{schemaNS, "element"}) {
+		if (el.Name != xml.Name{Space: schemaNS, Local: "element"}) {
 			continue
 		}
 		name := el.ResolveDefault(el.Attr("", "name"), s.TargetNS)
@@ -511,33 +513,33 @@ func (s *Schema) addElementTypeAliases(root *xmltree.Element, types map[xml.Name
 			continue
 		}
 		if _, ok := s.Types[name]; !ok {
-			if t, ok := s.lookupType(linkedType(ref), types); !ok {
+			t, ok := s.lookupType(linkedType(ref), types)
+			if !ok {
 				return fmt.Errorf("could not lookup type %s for element %s",
 					el.Prefix(ref), el.Prefix(name))
-			} else {
-				s.Types[name] = t
 			}
+
+			s.Types[name] = t
 		}
 	}
 	return nil
 }
 
-// Propagate the "mixed" attribute of a type appropriately to
-// all types derived from it.  For the propagation rules, see
-// https://www.w3.org/TR/xmlschema-1/#coss-ct. That Definition is written
-// for a computer, so I've translated the relevant portion into plain
-// English. My translation may be incorrect; check the reference if you
-// think so. The rules are as follows:
+// Propagate the "mixed" attribute of a type appropriately to all types derived from it.
+// For the propagation rules, see https://www.w3.org/TR/xmlschema-1/#coss-ct. That
+// Definition is written for a computer, so I've translated the relevant portion into
+// plain English. My translation may be incorrect; check the reference if you think so.
+// The rules are as follows:
 //
-// 	- When extending a complex type, the derived type *must* be mixed iff
-//    the base type is mixed.
-// 	- When restricting a complex type, the derived type *may* be mixed iff
-//    the base type is mixed.
-// 	- The builtin "xs:anyType" is mixed.
+//   - When extending a complex type, the derived type *must* be mixed iff the base type
+//     is mixed.
+//   - When restricting a complex type, the derived type *may* be mixed iff the base type
+//     is mixed.
+//   - The builtin "xs:anyType" is mixed.
 //
-// This package extends the concept of "Mixed" to apply to complex types
-// with simpleContent. This is done because Mixed is used as an indicator
-// that the user should care about the chardata content in a type.
+// This package extends the concept of "Mixed" to apply to complex types with
+// simpleContent. This is done because Mixed is used as an indicator that the user should
+// care about the chardata content in a type.
 func (s *Schema) propagateMixedAttr() {
 	for _, t := range s.Types {
 		propagateMixedAttr(t, Base(t), 0)
@@ -549,8 +551,8 @@ func propagateMixedAttr(t, b Type, depth int) {
 	if b == nil || depth > maxDepth {
 		return
 	}
-	// Mixed attr needs to "bubble up" from the bottom, so we
-	// recurse to do this backwards.
+	// Mixed attr needs to "bubble up" from the bottom, so we recurse to do this
+	// backwards.
 	propagateMixedAttr(b, Base(b), depth+1)
 
 	c, ok := t.(*ComplexType)
@@ -591,7 +593,7 @@ func attributeDefaultType(root *xmltree.Element) {
 
 // 3.3.2 XML Representation of Element Declaration Schema Components
 //
-// Elements types default to anyType
+// # Elements types default to anyType
 //
 // https://www.w3.org/TR/xmlschema-1/#Element_Declaration_details
 func elementDefaultType(root *xmltree.Element) {
@@ -621,7 +623,7 @@ func (s *Schema) parseTypes(root *xmltree.Element) (err error) {
 		t := s.parseSimpleType(el)
 		s.Types[t.Name] = t
 	}
-	s.Types[xml.Name{tns, "_self"}] = s.parseSelfType(root)
+	s.Types[xml.Name{Space: tns, Local: "_self"}] = s.parseSelfType(root)
 	return err
 }
 
@@ -630,7 +632,7 @@ func (s *Schema) parseSelfType(root *xmltree.Element) *ComplexType {
 	self.Content = nil
 	self.Children = nil
 	for _, el := range root.Children {
-		if (el.Name == xml.Name{schemaNS, "element"}) {
+		if (el.Name == xml.Name{Space: schemaNS, Local: "element"}) {
 			self.Children = append(self.Children, el)
 		}
 	}
@@ -669,8 +671,8 @@ func (s *Schema) parseComplexType(root *xmltree.Element) *ComplexType {
 	return &t
 }
 
-// simpleContent indicates that the content model of the new type
-// contains only character data and no elements
+// simpleContent indicates that the content model of the new type contains only character
+// data and no elements
 func (t *ComplexType) parseSimpleContent(ns string, root *xmltree.Element) {
 	var doc annotation
 
@@ -692,8 +694,8 @@ func (t *ComplexType) parseSimpleContent(ns string, root *xmltree.Element) {
 	t.Doc += string(doc)
 }
 
-// The complexContent element signals that we intend to restrict or extend
-// the content model of a complex type.
+// The complexContent element signals that we intend to restrict or extend the content
+// model of a complex type.
 func (t *ComplexType) parseComplexContent(ns string, root *xmltree.Element) {
 	var doc annotation
 	if mixed := root.Attr("", "mixed"); mixed != "" {
@@ -801,7 +803,7 @@ func parsePlural(el *xmltree.Element) bool {
 	return false
 }
 
-func parseAnyElement(ns string, el *xmltree.Element) Element {
+func parseAnyElement(_ string, el *xmltree.Element) Element {
 	var base Type = AnyType
 	typeattr := el.Attr("", "type")
 	if typeattr != "" {
@@ -868,8 +870,7 @@ func parseAttribute(ns string, el *xmltree.Element) Attribute {
 		}
 	})
 	a.Doc = string(doc)
-	// Other attributes could be useful later. One such attribute is
-	// wsdl:arrayType.
+	// Other attributes could be useful later. One such attribute is wsdl:arrayType.
 	a.Attr = el.StartElement.Attr
 	return a
 }
@@ -890,8 +891,8 @@ func (s *Schema) parseSimpleType(root *xmltree.Element) *SimpleType {
 			t.List = true
 		case "union":
 			for _, name := range strings.Fields(el.Attr("", "memberTypes")) {
-				type_ := parseType(el.Resolve(name))
-				t.Union = append(t.Union, type_)
+				simpleType := parseType(el.Resolve(name))
+				t.Union = append(t.Union, simpleType)
 				t.Base = AnySimpleType
 			}
 		case "annotation":
@@ -912,11 +913,9 @@ func parseAnnotation(el *xmltree.Element) (doc annotation) {
 func parseSimpleRestriction(root *xmltree.Element, base Type) Restriction {
 	var r Restriction
 	var doc annotation
-	// Most of the restrictions on a simpleType are suited for
-	// validating input. This package is not a validator; we assume
-	// that the server sends valid data, and that it will tell us if
-	// our data is wrong. As such, most of the fields here are
-	// ignored.
+	// Most of the restrictions on a simpleType are suited for validating input. This
+	// package is not a validator; we assume that the server sends valid data, and that it
+	// will tell us if our data is wrong. As such, most of the fields here are ignored.
 	walk(root, func(el *xmltree.Element) {
 		switch el.Name.Local {
 		case "enumeration":
@@ -932,17 +931,20 @@ func parseSimpleRestriction(root *xmltree.Element, base Type) Restriction {
 		case "minLength":
 			r.MinLength = parseInt(el.Attr("", "value"))
 		case "pattern":
-			// We don't fully implement XML Schema's pattern language, and
-			// we don't want to stop a parse because of this. Instead, if we
-			// cannot compile a regex, we'll add the error msg to the annotation
-			// for this restriction.
+			// We don't fully implement XML Schema's pattern language, and we don't want
+			// to stop a parse because of this. Instead, if we cannot compile a regex,
+			// we'll add the error msg to the annotation for this restriction.
 			pat := el.Attr("", "value")
 			if r.Pattern != nil {
 				pat = r.Pattern.String() + "|" + pat
 			}
 			reg, err := parsePattern(pat)
 			if err != nil {
-				msg := fmt.Sprintf("This type must conform to the pattern %q, but the XSD library could not parse the regular expression. (%v)", pat, err)
+				msg := fmt.Sprintf(
+					"This type must conform to the pattern %q, but the XSD library could not parse the regular expression. (%v)",
+					pat,
+					err,
+				)
 				doc = doc.append(annotation(msg))
 			}
 			r.Pattern = reg
@@ -969,9 +971,11 @@ func parseMinMaxRestriction(el *xmltree.Element, base Type) (time.Time, float64)
 	var decimal float64
 	if v, ok := base.(Builtin); ok {
 		var format string
-		if v == Date {
+
+		switch v {
+		case Date:
 			format = "2006-01-02"
-		} else if v == DateTime {
+		case DateTime:
 			format = time.RFC3339
 		}
 
@@ -988,13 +992,14 @@ func parseMinMaxRestriction(el *xmltree.Element, base Type) (time.Time, float64)
 		// The base of the linked type is unknown, try to parse dates and decimals
 		d, err := time.Parse("2006-01-02", el.Attr("", "value"))
 		if err != nil {
-			d, err := time.Parse(time.RFC3339, el.Attr("", "value"))
+			d, err = time.Parse(time.RFC3339, el.Attr("", "value"))
 			if err != nil {
 				decimal = parseDecimal(el.Attr("", "value"))
 			}
 			date = d
+		} else {
+			date = d
 		}
-		date = d
 	} else {
 		decimal = parseDecimal(el.Attr("", "value"))
 	}
@@ -1005,16 +1010,15 @@ func parseMinMaxRestriction(el *xmltree.Element, base Type) (time.Time, float64)
 //
 // http://www.w3.org/TR/xmlschema-0/#regexAppendix
 //
-// For now, they are similar enough to RE2 expressions that we will
-// just try and compile them as RE2 expressions. If anyone wants to
-// transpile XML Schema patterns to RE2 expressions, be my guest :)
+// For now, they are similar enough to RE2 expressions that we will just try and compile
+// them as RE2 expressions. If anyone wants to transpile XML Schema patterns to RE2
+// expressions, be my guest :)
 func parsePattern(pat string) (*regexp.Regexp, error) {
 	return regexp.Compile(pat)
 }
 
-// Resolve all linkedTypes in a schema, so that all types are based
-// on a SimpleType, ComplexType, or a Builtin. Also resolve the types
-// of all Attributes and Elements.
+// Resolve all linkedTypes in a schema, so that all types are based on a SimpleType,
+// ComplexType, or a Builtin. Also resolve the types of all Attributes and Elements.
 func (s *Schema) resolvePartialTypes(types map[xml.Name]Type) error {
 	for name, t := range s.Types {
 		var (
@@ -1028,7 +1032,8 @@ func (s *Schema) resolvePartialTypes(types map[xml.Name]Type) error {
 			if t.Base != nil {
 				ref, ok = t.Base.(linkedType)
 				if ok {
-					base, ok := s.lookupType(ref, types)
+					var base Type
+					base, ok = s.lookupType(ref, types)
 					if !ok {
 						return fmt.Errorf("complexType %s: could not find base type %s in namespace %s",
 							name.Local, ref.Local, ref.Space)
@@ -1038,11 +1043,12 @@ func (s *Schema) resolvePartialTypes(types map[xml.Name]Type) error {
 			}
 
 			for i, e := range t.Elements {
-				ref, ok := e.Type.(linkedType)
+				ref, ok = e.Type.(linkedType)
 				if !ok {
 					continue
 				}
-				base, ok := s.lookupType(ref, types)
+				var base Type
+				base, ok = s.lookupType(ref, types)
 				if !ok {
 					return fmt.Errorf("complexType %s: could not find type %q in namespace %s for element %s",
 						name.Local, ref.Local, ref.Space, e.Name.Local)
@@ -1051,11 +1057,12 @@ func (s *Schema) resolvePartialTypes(types map[xml.Name]Type) error {
 				t.Elements[i] = e
 			}
 			for i, a := range t.Attributes {
-				ref, ok := a.Type.(linkedType)
+				ref, ok = a.Type.(linkedType)
 				if !ok {
 					continue
 				}
-				base, ok := s.lookupType(ref, types)
+				var base Type
+				base, ok = s.lookupType(ref, types)
 				if !ok {
 					return fmt.Errorf("complexType %s: could not find type %s in namespace %s for attribute %s",
 						name.Local, ref.Local, ref.Space, a.Name.Local)
@@ -1081,12 +1088,12 @@ func (s *Schema) resolvePartialTypes(types map[xml.Name]Type) error {
 				if !ok {
 					continue
 				}
-				real, ok := s.lookupType(ref, types)
+				realType, ok := s.lookupType(ref, types)
 				if !ok {
 					return fmt.Errorf("simpleType %s: could not find union memberType %s in namespace %s",
 						name.Local, ref.Local, ref.Space)
 				}
-				t.Union[i] = real
+				t.Union[i] = realType
 			}
 		default:
 			// This should never happen, the parse function should only add

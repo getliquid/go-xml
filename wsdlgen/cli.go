@@ -3,7 +3,6 @@ package wsdlgen
 import (
 	"errors"
 	"flag"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -12,8 +11,7 @@ import (
 	"github.com/getliquid/go-xml/xsdgen"
 )
 
-// The GenSource method converts the AST returned by GenAST to formatted
-// Go source code.
+// GenSource converts the AST returned by GenAST to formatted Go source code.
 func (cfg *Config) GenSource(files ...string) ([]byte, error) {
 	file, err := cfg.GenAST(files...)
 	if err != nil {
@@ -22,9 +20,9 @@ func (cfg *Config) GenSource(files ...string) ([]byte, error) {
 	return gen.FormattedSource(file, "fixme.go")
 }
 
-// GenCLI creates a file containing Go source generated from a WSDL
-// definition. It is intended to be called from the main function of any
-// command-line interfaces to the wsdlgen package.
+// GenCLI creates a file containing Go source generated from a WSDL definition. It is
+// intended to be called from the main function of any command-line interfaces to the
+// wsdlgen package.
 func (cfg *Config) GenCLI(arguments ...string) error {
 	var (
 		err          error
@@ -43,7 +41,7 @@ func (cfg *Config) GenCLI(arguments ...string) error {
 		return err
 	}
 	if fs.NArg() == 0 {
-		return errors.New("Usage: wsdlgen [-r rule] [-o file] [-port name] [-pkg pkg] file ...")
+		return errors.New("usage: wsdlgen [-r rule] [-o file] [-port name] [-pkg pkg] file")
 	}
 
 	if *debug {
@@ -73,12 +71,11 @@ func (cfg *Config) GenCLI(arguments ...string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(*output, data, 0666)
+	return os.WriteFile(*output, data, 0666)
 }
 
-// The GenCLI function generates Go source code using the default
-// options chosen by the wsdlgen package. It is meant to be used from
-// the main package of a command-line program.
+// GenCLI generates Go source code using the default options chosen by the wsdlgen
+// package. It is meant to be used from the main package of a command-line program.
 func GenCLI(args ...string) error {
 	var cfg Config
 	cfg.Option(DefaultOptions...)

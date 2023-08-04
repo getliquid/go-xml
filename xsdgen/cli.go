@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/getliquid/go-xml/internal/commandline"
@@ -13,9 +13,8 @@ import (
 	"github.com/getliquid/go-xml/xsd"
 )
 
-// GenCode reads all xml schema definitions from the provided
-// data. If succesful, the returned *Code value can be used to
-// lookup identifiers and generate Go code.
+// GenCode reads all xml schema definitions from the provided data. If succesful, the
+// returned *Code value can be used to lookup identifiers and generate Go code.
 func (cfg *Config) GenCode(data ...[]byte) (*Code, error) {
 	if len(cfg.namespaces) == 0 {
 		cfg.Option(Namespaces(lookupTargetNS(data...)...))
@@ -51,10 +50,14 @@ func (cfg *Config) GenCode(data ...[]byte) (*Code, error) {
 	return cfg.gen(primaries, deps)
 }
 
-// GenAST creates an *ast.File containing type declarations and
-// associated methods based on a set of XML schema.
+// GenAST creates an *ast.File containing type declarations and associated methods based
+// on a set of XML schema.
 func (cfg *Config) GenAST(files ...string) (*ast.File, error) {
 	data, err := cfg.readFiles(files...)
+	if err != nil {
+		return nil, err
+	}
+
 	code, err := cfg.GenCode(data...)
 	if err != nil {
 		return nil, err
@@ -62,10 +65,10 @@ func (cfg *Config) GenAST(files ...string) (*ast.File, error) {
 	return code.GenAST()
 }
 
-func (cfg *Config) readFiles(files ...string) ([][]byte,error) {
+func (cfg *Config) readFiles(files ...string) ([][]byte, error) {
 	data := make([][]byte, 0, len(files))
 	for _, filename := range files {
-		b, err := ioutil.ReadFile(filename)
+		b, err := os.ReadFile(filename)
 		if err != nil {
 			return nil, err
 		}
@@ -83,18 +86,15 @@ func (cfg *Config) readFiles(files ...string) ([][]byte,error) {
 			if err != nil {
 				return nil, fmt.Errorf("error reading imported files: %v", err)
 			}
-			for _, d := range referencedData {
-				// prepend imported refs (i.e. append before the referencing file)
-				data = append(data, d)
-			}
+
+			data = append(data, referencedData...)
 		}
 		data = append(data, b)
 	}
 	return data, nil
 }
 
-// The GenSource method converts the AST returned by GenAST to formatted
-// Go source code.
+// GenSource converts the AST returned by GenAST to formatted Go source code.
 func (cfg *Config) GenSource(files ...string) ([]byte, error) {
 	file, err := cfg.GenAST(files...)
 	if err != nil {
@@ -103,10 +103,9 @@ func (cfg *Config) GenSource(files ...string) ([]byte, error) {
 	return gen.FormattedSource(file, "fixme.go")
 }
 
-// GenCLI creates a file containing Go source generated from an XML
-// Schema. Main is meant to be called as part of a command, and can
-// be used to change the behavior of the xsdgen command in ways that
-// its command-line arguments do not allow. The arguments are the
+// GenCLI creates a file containing Go source generated from an XML Schema. Main is meant
+// to be called as part of a command, and can be used to change the behavior of the xsdgen
+// command in ways that its command-line arguments do not allow. The arguments are the
 // same as those passed to the xsdgen command.
 func (cfg *Config) GenCLI(arguments ...string) error {
 	var (
@@ -116,9 +115,13 @@ func (cfg *Config) GenCLI(arguments ...string) error {
 		fs            = flag.NewFlagSet("xsdgen", flag.ExitOnError)
 		packageName   = fs.String("pkg", "", "name of the the generated package")
 		output        = fs.String("o", "xsdgen_output.go", "name of the output file")
-		followImports = fs.Bool("f", false, "follow import statements; load imported references recursively into scope")
-		verbose       = fs.Bool("v", false, "print verbose output")
-		debug         = fs.Bool("vv", false, "print debug output")
+		followImports = fs.Bool(
+			"f",
+			false,
+			"follow import statements; load imported references recursively into scope",
+		)
+		verbose = fs.Bool("v", false, "print verbose output")
+		debug   = fs.Bool("vv", false, "print debug output")
 	)
 	fs.Var(&replaceRules, "r", "replacement rule 'regex -> repl' (can be used multiple times)")
 	fs.Var(&xmlns, "ns", "target namespace(s) to generate types for")
@@ -127,7 +130,7 @@ func (cfg *Config) GenCLI(arguments ...string) error {
 		return err
 	}
 	if fs.NArg() == 0 {
-		return errors.New("Usage: xsdgen [-ns xmlns] [-r rule] [-o file] [-pkg pkg] file ...")
+		return errors.New("usage: xsdgen [-ns xmlns] [-r rule] [-o file] [-pkg pkg] file")
 	}
 	if *debug {
 		cfg.Option(LogLevel(5))
@@ -152,5 +155,5 @@ func (cfg *Config) GenCLI(arguments ...string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(*output, data, 0666)
+	return os.WriteFile(*output, data, 0666)
 }

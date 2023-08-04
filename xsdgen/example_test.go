@@ -2,7 +2,6 @@ package xsdgen_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -10,7 +9,7 @@ import (
 )
 
 func tmpfile() *os.File {
-	f, err := ioutil.TempFile("", "xsdgen_test")
+	f, err := os.CreateTemp("", "xsdgen_test")
 	if err != nil {
 		panic(err)
 	}
