@@ -819,22 +819,22 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 	}
 
 	if addXMLName {
+
+		name := cfg.public(t.TypeName())
+		if t.Base != nil {
+			//overrides = append(overrides, fieldOverride{})
+			name = cfg.public(t.Base.TypeName())
+		}
 		expr.Fields.List = append(expr.Fields.List, &ast.Field{
 			Names: []*ast.Ident{ast.NewIdent("XMLName")},
 			Type:  ast.NewIdent("xml.Name"),
-			Tag:   gen.String(fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, t.Name.Local)),
+			Tag:   gen.String(fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, name)),
 		})
-	}
-
-	name := cfg.public(t.TypeName())
-	if t.Base != nil {
-		//overrides = append(overrides, fieldOverride{})
-		name = cfg.public(t.Base.TypeName())
 	}
 
 	s := spec{
 		doc:         t.Doc,
-		name:        name,
+		name:        cfg.public(t.Name),
 		expr:        expr,
 		xsdType:     t,
 		helperTypes: helperTypes,
