@@ -15,7 +15,6 @@ import (
 	"github.com/getliquid/go-xml/internal/gen"
 	"github.com/getliquid/go-xml/xmltree"
 	"github.com/getliquid/go-xml/xsd"
-	"golang.org/x/exp/maps"
 )
 
 type orderedStringMap interface {
@@ -174,9 +173,8 @@ func (cfg *Config) gen(primaries, deps []xsd.Schema) (*Code, error) {
 	}
 
 	for _, primary := range primaries {
-		cfg.debugf("NOT flattening type hierarchy for schema %q", primary.TargetNS)
-		//types := cfg.flatten(primary.Types)
-		types := maps.Values(primary.Types)
+		cfg.debugf("flattening type hierarchy for schema %q", primary.TargetNS)
+		types := cfg.flatten(primary.Types)
 		types = cfg.expandComplexTypes(types)
 		for _, t := range types {
 			specs, err := cfg.genTypeSpec(t)
@@ -821,16 +819,10 @@ func (cfg *Config) genComplexType(t *xsd.ComplexType) ([]spec, error) {
 	}
 
 	if addXMLName {
-
-		name := cfg.public(t.TypeName())
-		if t.Base != nil {
-			//overrides = append(overrides, fieldOverride{})
-			name = cfg.public(t.Base.TypeName())
-		}
 		expr.Fields.List = append(expr.Fields.List, &ast.Field{
 			Names: []*ast.Ident{ast.NewIdent("XMLName")},
 			Type:  ast.NewIdent("xml.Name"),
-			Tag:   gen.String(fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, name)),
+			Tag:   gen.String(fmt.Sprintf("xml:\"%s %s\"", t.Name.Space, t.Name.Space)),
 		})
 	}
 
