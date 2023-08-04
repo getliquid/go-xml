@@ -15,6 +15,7 @@ import (
 	"github.com/getliquid/go-xml/internal/gen"
 	"github.com/getliquid/go-xml/xmltree"
 	"github.com/getliquid/go-xml/xsd"
+	"golang.org/x/exp/maps"
 )
 
 type orderedStringMap interface {
@@ -173,8 +174,9 @@ func (cfg *Config) gen(primaries, deps []xsd.Schema) (*Code, error) {
 	}
 
 	for _, primary := range primaries {
-		cfg.debugf("flattening type hierarchy for schema %q", primary.TargetNS)
-		types := cfg.flatten(primary.Types)
+		cfg.debugf("NOT flattening type hierarchy for schema %q", primary.TargetNS)
+		//types := cfg.flatten(primary.Types)
+		types := maps.Values(primary.Types)
 		types = cfg.expandComplexTypes(types)
 		for _, t := range types {
 			specs, err := cfg.genTypeSpec(t)
